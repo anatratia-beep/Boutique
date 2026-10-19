@@ -1,8 +1,8 @@
-# Construit TSENA et le met en ligne sur GitHub Pages à chaque modification de la branche main.
+# Construit le logiciel et le met en ligne sur GitHub Pages.
+# Mise en ligne MANUELLE uniquement : onglet Actions → « Mise en ligne » → Run workflow.
+# (Pour publier automatiquement à chaque modification, rajouter : push: branches: [main])
 name: Mise en ligne
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
