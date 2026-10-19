@@ -1,0 +1,18 @@
+{
+  "name": "Trésor en ligne — Gestion commerciale",
+  "short_name": "Trésor en ligne",
+  "description": "Achats, stock, ventes, livraisons et trésorerie, en ligne et hors ligne.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EFEBF8",
+  "theme_color": "#3A2470",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

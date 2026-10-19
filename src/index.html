@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Trésor en ligne</title>
+  <meta name="description" content="Gestion commerciale : achats, stock, ventes, livraisons, trésorerie.">
+  <meta name="theme-color" content="#3A2470">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Trésor en ligne">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Poppins:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
+  <!--CSS-->
+  <script>
+    // Filet de sécurité : si TSENA ne démarre pas, afficher pourquoi et proposer de réparer (sans effacer les données).
+    (function () {
+      var errs = [], shown = false;
+      function esc(t) { return String(t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+      function panel() {
+        var root = document.getElementById('root');
+        if (shown || (root && root.childElementCount)) return;
+        shown = true;
+        document.body.innerHTML = '<div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:12vh auto;padding:24px;text-align:center;color:#172026">' +
+          '<h2 style="margin:0 0 12px">Trésor en ligne n\u2019a pas pu d\u00e9marrer</h2>' +
+          '<p style="color:#5b686c">Cela arrive parfois juste apr\u00e8s une mise \u00e0 jour. Touchez le bouton ci-dessous : vos donn\u00e9es ne sont pas effac\u00e9es.</p>' +
+          '<button id="tsena-fix" style="margin:16px 0;min-height:48px;padding:0 22px;border:0;border-radius:12px;background:#17695A;color:#fff;font-weight:700;font-size:16px;cursor:pointer">R\u00e9parer et recharger</button>' +
+          (errs.length ? '<p style="font-size:12px;color:#8a9497;word-break:break-word">D\u00e9tail : ' + esc(errs.slice(0, 3).join(' | ')) + '</p>' : '') + '</div>';
+        document.getElementById('tsena-fix').onclick = function () {
+          var done = function () { location.reload(); };
+          try {
+            Promise.all([
+              navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }) : null,
+              window.caches ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }) : null,
+            ]).then(done, done);
+          } catch (e) { done(); }
+        };
+      }
+      window.addEventListener('error', function (e) {
+        var t = e.target, src = t && (t.src || t.href) || '';
+        if (/fonts\.(googleapis|gstatic)\.com/.test(src)) return;
+        errs.push(t && (t.src || t.href) ? 'Fichier introuvable : ' + (t.src || t.href) : (e.message || 'erreur'));
+        setTimeout(panel, 6000);
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) { errs.push(String(e.reason && e.reason.message || e.reason)); setTimeout(panel, 6000); });
+      setTimeout(panel, 15000);
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <noscript>Trésor en ligne a besoin de JavaScript pour fonctionner.</noscript>
+  <script nomodule>
+    // Navigateur trop ancien (avant iOS 11 / Chrome 61) : expliquer plutôt qu'une page blanche.
+    document.getElementById('root').innerHTML = '<div style="font-family:sans-serif;max-width:460px;margin:12vh auto;padding:24px;text-align:center"><h2>Navigateur trop ancien</h2><p>Tr\u00e9sor en ligne fonctionne avec Google Chrome (Android 8 ou plus r\u00e9cent), un iPhone sous iOS 12 ou plus r\u00e9cent, ou un ordinateur avec Chrome ou Edge. Mettez \u00e0 jour le navigateur ou utilisez un autre appareil.</p></div>';
+  </script>
+  <!--JS-->
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "tsena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --serve",
+    "icons": "node scripts/icons.mjs"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "jszip": "3.10.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}
