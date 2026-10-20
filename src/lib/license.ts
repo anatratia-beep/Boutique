@@ -12,7 +12,9 @@ const VENDOR_PUBLIC_KEY: JsonWebKey = {
 };
 
 /** Coordonnées affichées sur l'écran d'activation (laisser vide pour ne rien afficher). */
-export const VENDOR_CONTACT = '';
+export const VENDOR_CONTACT = '+261 38 32 585 16';
+/** Numéro WhatsApp du vendeur (format international, chiffres seulement). */
+export const VENDOR_WHATSAPP = '261383258516';
 
 /** Synchronisation cloud désactivée dans cette version vendue (chaque licence = 1 appareil). */
 export const CLOUD_ENABLED = false;

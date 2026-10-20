@@ -1,6 +1,6 @@
 // Écran d'activation (licence) et rappel avant expiration.
 import { useEffect, useState } from 'react';
-import { activate, deviceCode, frDate, licenseState, VENDOR_CONTACT, type LicenseState } from '../lib/license';
+import { activate, deviceCode, frDate, licenseState, VENDOR_CONTACT, VENDOR_WHATSAPP, type LicenseState } from '../lib/license';
 import { Button } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { AuthShell } from './Auth';
@@ -50,6 +50,11 @@ export function ActivationScreen({ initial, onDone }: { initial: LicenseState; o
         <li>Collez ci-dessous la <strong>clé de licence</strong> reçue, puis touchez « Activer ».</li>
       </ol>
       {code && <DeviceCodeBox code={code} />}
+      {code && VENDOR_WHATSAPP && (
+        <a className="btn btn-ghost btn-block" href={`https://wa.me/${VENDOR_WHATSAPP}?text=${encodeURIComponent(`Bonjour, je souhaite ${expired ? 'renouveler' : 'activer'} ma licence Boutique. Mon code appareil : ${code}`)}`} target="_blank" rel="noopener">
+          <Icon name="share" size={18} /><span>Envoyer le code par WhatsApp</span>
+        </a>
+      )}
       <form className="stack" onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true); setError(null);
