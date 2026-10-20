@@ -14,6 +14,7 @@ import { licenseState } from './lib/license';
 import { ActivationScreen } from './pages/License';
 import { InstallScreen, wantsInstallPage } from './pages/Install';
 import { initialLang, patchDialogs, setLang } from './lib/i18n';
+import { applyPendingUpdate, startAutoUpdate, DOWNLOAD_PAGE } from './lib/liveUpdate';
 
 declare global {
   const __APP_VERSION__: string;
@@ -38,6 +39,8 @@ function guessDeviceName() {
 
 async function boot() {
   try {
+    // Application Android : passe sur la nouvelle version téléchargée la dernière fois (l'application se recharge).
+    if (await applyPendingUpdate()) return;
     await openDb();
     // Licence : sans clé valide pour cet appareil, seul l'écran d'activation s'affiche.
     const lic = await licenseState();
@@ -68,6 +71,9 @@ async function boot() {
       (window as any).__tsena = { save: db.save, get: db.get, getRaw: db.getRaw, all: db.all, syncNow: sync.syncNow, outboxCount: db.outboxCount, nextNumber: cat.nextNumber, customerIdFor: ord.customerIdFor, getMeta: db.getMeta, setMeta: db.setMeta, syncStatus: sync.syncStatus, optimizePhotos: (await import('./lib/maintenance')).optimizePhotos, cloudBackup: (await import('./lib/backup')).cloudBackup };
     }
     root.render(<App />);
+    startAutoUpdate(() => {
+      void import('./ui/kit').then(({ toast }) => toast(`Une nouvelle version de l'application est à installer : ${DOWNLOAD_PAGE}`, 'info'));
+    });
   } catch (e: any) {
     root.render(
       <div className="splash">

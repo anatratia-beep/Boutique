@@ -27,7 +27,7 @@ const result = await esbuild.build({
   metafile: true,
   define: {
     'process.env.NODE_ENV': '"production"',
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || pkg.version), // numéro de la version publiée (GitHub Actions)
     __BUILD_DATE__: JSON.stringify(BUILT),
   },
   logLevel: 'warning',

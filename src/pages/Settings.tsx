@@ -20,6 +20,7 @@ import { ConflictsCard, DevicesCard } from './SyncCards';
 import { LicenseCard } from './License';
 import { LangPicker } from '../ui/langPicker';
 import { tr } from '../lib/i18n';
+import { applyPendingUpdate, checkForUpdate, isAndroidApp, DOWNLOAD_PAGE } from '../lib/liveUpdate';
 import { CLOUD_ENABLED } from '../lib/license';
 import { actionsSince, createRestorePoint, restorePoints, restoreToPoint, type RestorePoint } from '../lib/restorePoints';
 import { loc } from '../lib/i18n';
@@ -652,6 +653,16 @@ function SyncHistoryCard() {
 
 /** Vérifie tout de suite s'il existe une version plus récente en ligne, l'installe et recharge l'application. */
 async function checkNow() {
+  if (isAndroidApp()) {
+    toast('Recherche d’une mise à jour…', 'info');
+    const r = await checkForUpdate();
+    if (r === 'none') toast('Vous avez déjà la dernière version', 'info');
+    else if (r === 'ready') { toast('Nouvelle version téléchargée : redémarrage…', 'info'); setTimeout(() => void applyPendingUpdate(), 1200); }
+    else if (r === 'shell') toast(`Une nouvelle version de l'application est à installer : ${DOWNLOAD_PAGE}`, 'info');
+    else toast('Pas de connexion : impossible de chercher une mise à jour', 'error');
+    return;
+  }
+  if (/Electron/.test(navigator.userAgent)) { toast('Les mises à jour arrivent toutes seules : elles s’installent au prochain démarrage du logiciel.', 'info'); return; }
   try {
     const v = await (await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' })).json();
     if (!v?.built || v.built === __BUILD_DATE__) { toast('Vous avez déjà la dernière version', 'info'); return; }

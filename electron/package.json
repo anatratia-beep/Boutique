@@ -13,9 +13,25 @@
   "build": {
     "appId": "mg.anatratia.boutique",
     "productName": "Boutique",
-    "files": ["main.cjs", "icon.png", "web/**/*"],
-    "directories": { "output": "release" },
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "icon.png" },
+    "files": [
+      "main.cjs",
+      "icon.png",
+      "web/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
@@ -25,6 +41,25 @@
       "shortcutName": "Boutique",
       "artifactName": "Boutique-Installation-${version}.exe",
       "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "icon.png",
+      "category": "public.app-category.business",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "Boutique-Mac-${version}.dmg",
+      "title": "Boutique"
     }
   }
 }

@@ -4358,4 +4358,8 @@ export const EN: Record<string, string> = {"Accueil":"Home",
 "Colonnes à gauche":"Columns on the left",
 "Colonnes à droite":"Columns on the right",
 "> 1 an":"> 1 year",
+"Recherche d’une mise à jour…":"Checking for an update…",
+"Nouvelle version téléchargée : redémarrage…":"New version downloaded: restarting…",
+"Une nouvelle version de l'application est à installer : {0}":"A new version of the app needs to be installed: {0}",
+"Les mises à jour arrivent toutes seules : elles s’installent au prochain démarrage du logiciel.":"Updates arrive on their own: they are installed the next time the software starts.",
 "Indiquez le taux du RMB (combien de {0} pour 1 ¥).":"Enter the RMB rate (how many {0} for 1 ¥)."};

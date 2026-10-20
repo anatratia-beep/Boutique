@@ -1,12 +1,15 @@
-# Construit les applications Boutique (Android .apk et Windows .exe) et les dépose dans « Releases ».
+# Construit les applications Boutique (Android .apk, Windows .exe, Mac .dmg) et les publie.
 # Se lance à chaque modification du logiciel, ou à la main : onglet Actions → « Applications » → Run workflow.
-# Rien n'est mis en ligne sur Internet : seuls les fichiers à installer sont produits.
 # Android : signé avec la clé du vendeur (secrets ANDROID_KEYSTORE_*), pour que les mises à jour s'installent par-dessus.
+# Publication : dans le dépôt public de téléchargements (DOWNLOAD_REPO) si le secret RELEASES_TOKEN existe,
+# sinon dans les « Releases » de ce dépôt. Le code du logiciel, lui, peut rester privé.
+# Mises à jour automatiques : avec le secret UPDATE_SIGNING_KEY, un paquet signé (update.json + web-<version>.json)
+# est ajouté ; les applications installées le téléchargent et l'utilisent au démarrage suivant.
 name: Applications
 on:
   push:
     branches: [main]
-    paths: ['src/**', 'public/**', 'electron/**', 'android-config/**', 'capacitor.config.json', 'package.json', '.github/workflows/applications.yml']
+    paths: ['src/**', 'public/**', 'electron/**', 'android-config/**', 'capacitor.config.json', 'package.json', 'scripts/build.mjs', 'scripts/make-update.mjs', '.github/workflows/applications.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -15,6 +18,12 @@ concurrency:
   cancel-in-progress: true
 env:
   APP_VERSION: 1.0.${{ github.run_number }}
+  DOWNLOAD_REPO: anatratia-beep/Boutique-telechargements
+  NOTES: |
+    **Android** : téléchargez le fichier `.apk`, ouvrez-le sur le téléphone et autorisez l'installation.
+    **Windows** : téléchargez le fichier `.exe` et lancez-le. Si Windows affiche « Windows a protégé votre ordinateur », cliquez « Informations complémentaires » puis « Exécuter quand même ».
+    **Mac** : téléchargez le fichier `.dmg`, ouvrez-le et glissez Boutique dans Applications. Au premier lancement, si le Mac refuse de l'ouvrir : Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».
+    Au premier lancement, le logiciel demande une clé de licence. Ensuite, les mises à jour arrivent toutes seules.
 
 jobs:
   web:
@@ -43,7 +52,7 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - name: Projet Android (Capacitor)
         run: |
-          npm install --no-save --no-audit --no-fund @capacitor/cli@6.2.0 @capacitor/core@6.2.0 @capacitor/android@6.2.0
+          npm install --no-save --no-audit --no-fund @capacitor/cli@6.2.0 @capacitor/core@6.2.0 @capacitor/android@6.2.0 @capacitor/filesystem@^6.0.0
           npx cap add android
           npx cap sync android
           pip install pillow
@@ -95,20 +104,68 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: windows, path: electron/release/*.exe, retention-days: 7 }
 
-  release:
-    needs: [android, windows]
-    runs-on: ubuntu-latest
+  mac:
+    needs: web
+    runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: { path: files, pattern: '{android,windows}', merge-multiple: true }
-      - run: ls -la files
-      - uses: softprops/action-gh-release@v2
+        with: { name: web, path: electron/web }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Construction de l'application Mac
+        working-directory: electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          npm install --no-audit --no-fund
+          npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
+          npx electron-builder --mac --publish never
+          ls release
+      - uses: actions/upload-artifact@v4
+        with: { name: mac, path: electron/release/*.dmg, retention-days: 7 }
+
+  release:
+    needs: [web, android, windows, mac]
+    # La version Mac est un plus : si elle échoue, Android et Windows sont quand même publiés.
+    if: ${{ always() && needs.android.result == 'success' && needs.windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.RELEASES_TOKEN != '' }}
+      UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: files, pattern: '{android,windows,mac}', merge-multiple: true }
+      - uses: actions/download-artifact@v4
+        with: { name: web, path: dist }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Paquet de mise à jour automatique (signé)
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ] || [ "$HAS_TOKEN" != "true" ]; then
+            echo "::warning::Pas de mise à jour automatique : secrets UPDATE_SIGNING_KEY et RELEASES_TOKEN nécessaires."
+          else
+            node scripts/make-update.mjs dist files
+          fi
+          ls -la files
+      - name: Publication dans le dépôt de téléchargements
+        if: env.HAS_TOKEN == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.DOWNLOAD_REPO }}
+          token: ${{ secrets.RELEASES_TOKEN }}
+          tag_name: v${{ env.APP_VERSION }}
+          name: Boutique ${{ env.APP_VERSION }}
+          make_latest: true
+          body: ${{ env.NOTES }}
+          files: files/*
+      - name: Publication dans ce dépôt (sans dépôt de téléchargements)
+        if: env.HAS_TOKEN != 'true'
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.APP_VERSION }}
           name: Boutique ${{ env.APP_VERSION }}
           make_latest: true
-          body: |
-            **Android** : téléchargez le fichier `.apk`, ouvrez-le sur le téléphone et autorisez l'installation.
-            **Windows** : téléchargez le fichier `.exe` et lancez-le. Si Windows affiche « Windows a protégé votre ordinateur », cliquez « Informations complémentaires » puis « Exécuter quand même ».
-            Au premier lancement, le logiciel demande une clé de licence.
+          body: ${{ env.NOTES }}
           files: files/*
