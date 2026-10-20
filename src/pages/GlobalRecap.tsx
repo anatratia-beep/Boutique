@@ -12,8 +12,9 @@ import { Icon } from '../ui/icons';
 import { PeriodPicker, defaultPeriod, type Period } from '../ui/period';
 import { exportTables, type Col } from '../ui/table';
 import { Delta } from './Reports';
+import { loc } from '../lib/i18n';
 
-const fmtD = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const fmtD = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 const DEFAULT_PERIOD: Record<Gran, Period['key']> = { day: 'month', week: 'month', month: 'year', year: 'all' };
 
 export function GlobalRecap() {

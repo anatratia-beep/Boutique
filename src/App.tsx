@@ -43,6 +43,7 @@ import { CategoriesPage } from './pages/Categories';
 import { MyDeliveriesPage } from './pages/MyDeliveries';
 import { ExpensesPage } from './pages/Expenses';
 import { NotifBar, NotifBell, NotificationsPage, useNotifCount } from './ui/notifications';
+import { loc } from './lib/i18n';
 function NavNotifCount() { const n = useNotifCount(); return n ? <span className="nav-count">{n}</span> : null; }
 
 interface NavItem { path: string; label: string; short?: string; icon: IconName; perm?: string; group: string; page: () => ReactNode; mobile?: boolean }
@@ -198,7 +199,7 @@ function Shell() {
             </span>
           </a>
           <Button variant="quiet" icon="logout" onClick={() => logout()}>Se déconnecter</Button>
-          <a className="small muted version-line" href="#/parametres/systeme" title="Version installée sur cet appareil">Version du {new Date(__BUILD_DATE__).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</a>
+          <a className="small muted version-line" href="#/parametres/systeme" title="Version installée sur cet appareil">Version du {new Date(__BUILD_DATE__).toLocaleString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</a>
         </div>
       </aside>
       {open && <div className="scrim" onClick={() => setOpen(false)} />}
@@ -240,7 +241,7 @@ function UpdatedBanner() {
     <div className="notice notice-ok updated-banner" role="status">
       <Icon name="check" />
       <div style={{ flex: 1 }} className="stack-s">
-        <strong>Logiciel mis à jour — version du {new Date(__BUILD_DATE__).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+        <strong>Logiciel mis à jour — version du {new Date(__BUILD_DATE__).toLocaleString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
         {news.length > 0 && <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>{news.slice(0, 8).map((n) => <li key={n}>{n}</li>)}</ul>}
         <span className="small muted">Vos données n’ont pas changé.</span>
       </div>

@@ -13,12 +13,16 @@ import { App } from './App';
 import { licenseState } from './lib/license';
 import { ActivationScreen } from './pages/License';
 import { InstallScreen, wantsInstallPage } from './pages/Install';
+import { initialLang, patchDialogs, setLang } from './lib/i18n';
 
 declare global {
   const __APP_VERSION__: string;
   const __BUILD_DATE__: string;
 }
 
+// Langue de l'interface (choisie sur cet appareil ; par défaut celle du téléphone ou de l'ordinateur).
+setLang(initialLang());
+patchDialogs();
 const root = createRoot(document.getElementById('root')!);
 import('./ui/scrollHint').then((m) => m.watchWideTables()).catch(() => {});
 

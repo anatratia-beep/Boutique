@@ -7,7 +7,8 @@ import { useTable } from '../lib/db';
 import { fmtAr, fmtNum, variantLabel, type Product, type Variant } from '../lib/catalog';
 import { salesLedger } from '../lib/analytics';
 import { useCompany } from '../lib/settings';
-import { fmtPhone, normPhone, orderLabel, ORDER_STATUS, PAY_METHODS, keptTotal, type Order, type Zone } from '../lib/orders';
+import { trLines } from '../lib/i18n';
+import { waNumber, fmtPhone, normPhone, orderLabel, ORDER_STATUS, PAY_METHODS, keptTotal, type Order, type Zone } from '../lib/orders';
 import { ACCOUNTS, MOVE_TYPES, addDays, mondayOf, report, today, type AccountId, type Report, accountIds, allAccountIds } from '../lib/money';
 import { dayText, daySections, longDate, sectionsDoc, totals, weekDays, weekSections, weekText, type Section } from '../lib/recap';
 import { get } from '../lib/db';
@@ -17,6 +18,7 @@ import { Help, Badge, Button, Empty, IconButton, PageHead, fmtDate, toast } from
 import { Icon } from '../ui/icons';
 import { PrintDialog } from '../ui/print';
 import { PayoutCard, PayoutHistory, WeekGrid } from './WeekBoard';
+import { loc } from '../lib/i18n';
 
 export function RecapPage() {
   const can = useCan();
@@ -36,7 +38,7 @@ export function RecapPage() {
   const isFuture = (mode === 'week' ? addDays(monday, 7) : addDays(date, 1)) > today();
   const sections = mode === 'week' ? weekSections(r, days, withProfit) : daySections(r, withProfit);
   const wg = mode === 'week' ? grid(monday, addDays(monday, 5)) : null;
-  const text = mode === 'week' ? weekText(r, days, company, withProfit, wg ? { sales: wg.salesTotal, expenses: wg.expensesTotal, rest: wg.rest } : undefined) : dayText(r, company, withProfit);
+  const text = trLines(mode === 'week' ? weekText(r, days, company, withProfit, wg ? { sales: wg.salesTotal, expenses: wg.expensesTotal, rest: wg.rest } : undefined) : dayText(r, company, withProfit));
 
   return (
     <>
@@ -92,7 +94,7 @@ function DayTables({ r }: { r: Report }) {
           <div className="table-wrap"><table className="table">
             <thead><tr><th>Vente</th><th>Heure</th><th className="t-num">Articles</th><th>Paiement</th><th className="t-num">Montant</th></tr></thead>
             <tbody>{r.walkIns.map((o) => (
-              <tr key={o.id}><td><a href={`#/commandes/${o.id}`}>{o.number}</a> <span className="muted small">{o.internal ? `Vente interne · ${o.employeeName || '?'}` : o.name || ''}</span></td><td>{new Date(o.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
+              <tr key={o.id}><td><a href={`#/commandes/${o.id}`}>{o.number}</a> <span className="muted small">{o.internal ? `Vente interne · ${o.employeeName || '?'}` : o.name || ''}</span></td><td>{new Date(o.createdAt).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="t-num">{o.lines.reduce((s, l) => s + (l.qtyKept ?? l.qty), 0)}</td><td>{[...new Set(o.payments.map((p) => PAY_METHODS[p.method]))].join(' + ') || 'non payé'}</td><td className="t-num">{fmtAr(keptTotal(o) - (o.discount || 0))}</td></tr>
             ))}</tbody>
           </table></div>
@@ -160,7 +162,7 @@ function WeekTables({ days, r }: { days: ReturnType<typeof weekDays>; r: Report 
           <tbody>
             {days.map((d) => (
               <tr key={d.date}>
-                <td><strong>{new Date(`${d.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit' })}</strong></td>
+                <td><strong>{new Date(`${d.date}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit' })}</strong></td>
                 <td className="t-num">{fmtAr(d.t.walkIn)}</td><td className="t-num">{fmtAr(d.t.deliv)}</td><td className="t-num"><strong>{fmtAr(d.r.netSales)}</strong></td>
                 <td className="t-num">{fmtAr(d.t.cashIn)}</td><td className="t-num">{fmtAr(d.t.mmIn)}</td><td className="t-num">{fmtAr(d.t.fromCouriers)}</td><td className="t-num neg">{d.t.expenses ? fmtAr(d.t.expenses) : '—'}</td>
               </tr>
@@ -220,8 +222,8 @@ function MoneyCard({ r }: { r: Report }) {
 function Share({ text, title, sub, sections }: { text: string; title: string; sub: string; sections: Section[] }) {
   const company = useCompany();
   const [print, setPrint] = useState(false);
-  const phone = normPhone(company.bossPhone || '');
-  const intl = phone ? '261' + phone.replace(/^0/, '') : '';
+  const phone = company.bossPhone || '';
+  const intl = waNumber(phone);
   const enc = encodeURIComponent(text);
   const nav = navigator as any;
   return (
@@ -251,7 +253,7 @@ function SynthesisCard({ date }: { date: string }) {
       <div className="card-pad row-between">
         <div><h2>Synthèse de la journée</h2>
           <Help>« Sans retour » : tout ce qui est vendu ou parti en livraison ce jour-là. « Avec retour » : corrigé par les retours constatés au versement des livreurs, même les jours suivants.</Help></div>
-        {s.corrected ? <Badge tone="warn">Corrigé le {new Date(s.lastUpdate!).toLocaleDateString('fr-FR')}</Badge> : s.deliv.pending ? <Badge>{s.deliv.pending} livraison(s) à confirmer</Badge> : <Badge tone="ok">À jour</Badge>}
+        {s.corrected ? <Badge tone="warn">Corrigé le {new Date(s.lastUpdate!).toLocaleDateString(loc())}</Badge> : s.deliv.pending ? <Badge>{s.deliv.pending} livraison(s) à confirmer</Badge> : <Badge tone="ok">À jour</Badge>}
       </div>
       <div className="table-wrap"><table className="table synth-table">
         <thead><tr><th></th><th className="t-num">Nombre</th><th className="t-num">Montant sans retour</th><th className="t-num">Montant avec retour</th></tr></thead>
@@ -305,7 +307,7 @@ function WeekSynth({ dates }: { dates: string[] }) {
         <tbody>
           {rows.map((x) => (
             <tr key={x.date}>
-              <td><strong style={{ textTransform: 'capitalize' }}>{new Date(`${x.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit' })}</strong>{x.deliv.pending ? <div className="small muted">{x.deliv.pending} à confirmer</div> : null}</td>
+              <td><strong style={{ textTransform: 'capitalize' }}>{new Date(`${x.date}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit' })}</strong>{x.deliv.pending ? <div className="small muted">{x.deliv.pending} à confirmer</div> : null}</td>
               <td className="t-num">{x.walk.count}</td><td className="t-num">{x.deliv.count}</td><td className="t-num">{fmtAr(x.fees)}</td>
               <td className="t-num">{fmtAr(x.total.sans)}</td><td className={`t-num ${x.total.diff ? 'neg' : ''}`}>{fmtAr(x.total.avec)}</td>
             </tr>

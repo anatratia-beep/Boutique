@@ -12,8 +12,9 @@ import { Button, PageHead, navigate, toast, useRoute } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { exportTables, type Col } from '../ui/table';
 import { ImportPage } from './Import';
+import { loc } from '../lib/i18n';
 
-const d = (iso?: string) => (iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '');
+const d = (iso?: string) => (iso ? new Date(iso).toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' }) : '');
 const cat = (id?: string) => all<FinanceCategory>('financeCategories').find((c) => c.id === id)?.name ?? '';
 
 type Sheet = { name: string; cols: Col<any>[]; rows: any[] };

@@ -13,6 +13,7 @@ import { isWalkIn, type Order, type OrderLine, type PayMethod, type Payment } fr
 import type { Purchase, Reception } from './purchases';
 import type { PurchaseStatus } from './catalog';
 import { pointBefore } from './restorePoints';
+import { loc } from './i18n';
 
 /** Statut d'un achat après annulation d'une réception. */
 function statusAfterReceptionLines(prev: PurchaseStatus, lines: Purchase['lines']): PurchaseStatus {
@@ -82,8 +83,8 @@ export async function correctWalkInSale(o: Order, lines: OrderLine[], discount: 
   await addMoves(moves.map((m) => ({ ...m, type: (m.qty > 0 ? 'return' : 'sale') as StockMove['type'], refType: 'order', refId: o.id, reason: `${o.number} corrigée (${reason})`, at })));
   const fixed = lines.map((l) => ({ ...l, qtyKept: l.qty, qtyReturned: 0 }));
   const pays: Payment[] = settle && settle.amount ? [{ id: newId(), at, amount: settle.amount, method: settle.method, receivedBy: 'shop', note: `Correction ${o.number}`, userName: u?.fullName }] : [];
-  const before = o.lines.map((l) => `${l.qty}×${l.unitPrice.toLocaleString('fr-FR')}`).join(', ');
-  const after = fixed.map((l) => `${l.qty}×${l.unitPrice.toLocaleString('fr-FR')}`).join(', ');
+  const before = o.lines.map((l) => `${l.qty}×${l.unitPrice.toLocaleString(loc())}`).join(', ');
+  const after = fixed.map((l) => `${l.qty}×${l.unitPrice.toLocaleString(loc())}`).join(', ');
   await save('orders', {
     id: o.id, lines: fixed, adjusts: undefined, discount, payments: [...(o.payments || []), ...pays],
     events: [...(o.events || []), { at, text: `Vente corrigée (${reason}) : ${before} → ${after}${o.discount !== discount ? ` ; remise ${o.discount} → ${discount}` : ''}`, user: u?.fullName }],
@@ -125,7 +126,7 @@ export async function cancelMove(m: StockMove, reason: string) {
   if (m.refType && !['inventory', 'adjust'].includes(m.refType)) throw new Error('Ce mouvement vient d’une vente, d’une livraison ou d’une réception : corrigez ou annulez cette opération à la place.');
   if (all<StockMove>('stockMoves').some((x) => x.refType === 'cancel' && x.refId === m.id)) throw new Error('Ce mouvement est déjà annulé.');
   await pointBefore('annulation d’un mouvement de stock');
-  await addMoves({ variantId: m.variantId, qty: -m.qty, type: 'adjust', refType: 'cancel', refId: m.id, reason: `Annulation du mouvement du ${new Date(m.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} (${reason})`, at: bizNow() });
+  await addMoves({ variantId: m.variantId, qty: -m.qty, type: 'adjust', refType: 'cancel', refId: m.id, reason: `Annulation du mouvement du ${new Date(m.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} (${reason})`, at: bizNow() });
   await audit('Mouvement de stock annulé', `${m.qty > 0 ? '+' : ''}${m.qty} (${m.reason ?? m.type}) — ${reason}`, 'stockMoves', m.id);
 }
 export const isMoveCancelled = (m: StockMove) => all<StockMove>('stockMoves').some((x) => x.refType === 'cancel' && x.refId === m.id);

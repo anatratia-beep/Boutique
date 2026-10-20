@@ -8,6 +8,7 @@
 import { all, dumpAll, getMeta, getRaw, restoreAll, setMeta, type BaseRecord, type TableName } from './db';
 import { audit, can, currentUser } from './auth';
 import { syncNow } from './sync';
+import { loc } from './i18n';
 
 export interface RestorePoint { id: string; at: string; reason: string; byName?: string; counts: Record<string, number>; data: Record<string, BaseRecord[]> }
 const KEY = 'restorePoints';
@@ -64,7 +65,7 @@ export async function restoreToPoint(id: string) {
   if (!p) throw new Error('Point de restauration introuvable.');
   const u = currentUser();
   if (!u || !can(u, 'system.admin')) throw new Error('Seul le super-admin peut revenir à un point de restauration.');
-  await createRestorePoint(`Avant de revenir au point du ${new Date(p.at).toLocaleString('fr-FR')}`);
+  await createRestorePoint(`Avant de revenir au point du ${new Date(p.at).toLocaleString(loc())}`);
   const lost = actionsSince(p.at).length;
   // Photos : on garde celles d'aujourd'hui (elles ne sont pas dans le point).
   const data: Record<string, BaseRecord[]> = {};
@@ -72,7 +73,7 @@ export async function restoreToPoint(id: string) {
     data[t] = PHOTO_TABLES.has(t) ? rows.map((r) => { const cur = getRaw(t as TableName, r.id) as any; return cur?.photo && !(r as any).photo ? { ...r, photo: cur.photo } : r; }) : rows;
   }
   await restoreAll(data, 'replace');
-  await audit('Restauration', `Retour au point du ${new Date(p.at).toLocaleString('fr-FR')} (${p.reason}) : ${lost} action(s) faite(s) depuis sont annulées`, undefined, undefined, 'high');
+  await audit('Restauration', `Retour au point du ${new Date(p.at).toLocaleString(loc())} (${p.reason}) : ${lost} action(s) faite(s) depuis sont annulées`, undefined, undefined, 'high');
   syncNow();
 }
 

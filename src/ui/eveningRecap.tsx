@@ -6,6 +6,7 @@ import { all, useTable } from '../lib/db';
 import { useCan } from '../lib/auth';
 import { today } from '../lib/money';
 import { Icon } from './icons';
+import { loc } from '../lib/i18n';
 
 export const RECAP_HREF = '#/caisse-du-jour/envoyer';
 export const EVENING_HOUR = 16;
@@ -46,7 +47,7 @@ export function useEveningRecap() {
   return { allowed, sent, due: allowed && !sent && hour >= EVENING_HOUR };
 }
 
-const hm = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const hm = (iso: string) => new Date(iso).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' });
 
 /** Bouton compact (barre du haut sur téléphone, bas du menu sur ordinateur). */
 export function RecapShortcut({ compact }: { compact?: boolean }) {

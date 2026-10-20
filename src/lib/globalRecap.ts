@@ -10,6 +10,7 @@ import { variantCost, type Category, type StockMove, type Variant } from './cata
 import { usdRate } from './payouts';
 import type { Payout } from './closed';
 import { allDeltas } from './boosts';
+import { loc } from './i18n';
 
 export type Gran = 'day' | 'week' | 'month' | 'year';
 export const GRAN_LABEL: Record<Gran, string> = { day: 'Jour', week: 'Semaine', month: 'Mois', year: 'Année' };
@@ -23,7 +24,7 @@ export interface RecapRow {
 }
 export interface Recap { gran: Gran; from: string; to: string; rows: RecapRow[]; pages: { id: string; name: string }[]; groups: { key: string; label: string; rows: RecapRow[]; total: RecapRow }[]; total: RecapRow }
 
-const frDay = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', o);
+const frDay = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString(loc(), o);
 export function keyOf(day: string, g: Gran) { return g === 'day' ? day : g === 'week' ? mondayOf(day) : g === 'month' ? day.slice(0, 7) : day.slice(0, 4); }
 function rangeOfKey(key: string, g: Gran) {
   if (g === 'day') return { from: key, to: key };

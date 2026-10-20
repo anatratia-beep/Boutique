@@ -7,6 +7,7 @@ import { getCloud, syncNow, syncStatus } from './sync';
 import { restoreDefaultZones } from './orders';
 import { restoreDefaultFinance } from './money';
 import { createRestorePoint } from './restorePoints';
+import { loc } from './i18n';
 
 export interface BackupFile {
   app: 'TSENA';
@@ -160,7 +161,7 @@ export function dataStats(data: Record<string, BaseRecord[]> = dumpAll()): DataS
   const n = (t: string) => (Array.isArray(data?.[t]) ? data[t].filter((r) => r && !r.deleted).length : 0);
   return { total: Object.keys(data || {}).reduce((s, t) => s + n(t), 0), products: n('products'), orders: n('orders'), stockMoves: n('stockMoves'), customers: n('customers') };
 }
-export const statsText = (s: DataStats) => `${s.total.toLocaleString('fr-FR')} fiches : ${s.products.toLocaleString('fr-FR')} articles, ${s.orders.toLocaleString('fr-FR')} commandes/ventes, ${s.stockMoves.toLocaleString('fr-FR')} mouvements de stock`;
+export const statsText = (s: DataStats) => `${s.total.toLocaleString(loc())} fiches : ${s.products.toLocaleString(loc())} articles, ${s.orders.toLocaleString(loc())} commandes/ventes, ${s.stockMoves.toLocaleString(loc())} mouvements de stock`;
 /** Nombre de fiches lu dans le libellé d'une copie (« … · 3 120 fiches »), ou null pour les anciennes copies. */
 export function labelCount(label: string): number | null {
   const m = /·\s*([\d\s\u00a0\u202f.]+)\s*fiches/.exec(label || '');
@@ -209,7 +210,7 @@ export async function cloudBackup(label: string, opts: { auto?: boolean } = {}) 
   if (opts.auto) { const why = await cloudCopyBlocker(); if (why) throw new Error(`Copie automatique reportée : ${why}.`); }
   const data = dumpAll();
   const st = dataStats(data);
-  const full = `${label} · ${st.total.toLocaleString('fr-FR')} fiches`;
+  const full = `${label} · ${st.total.toLocaleString(loc())} fiches`;
   const res = await cloudFetch('backups?select=id', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },

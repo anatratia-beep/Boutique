@@ -18,6 +18,7 @@ import { today } from '../lib/money';
 import { GlobalRecap } from './GlobalRecap';
 import { BossReport } from './BossReport';
 import { abandonReasons, conversion, type ConvRow } from '../lib/insights';
+import { loc } from '../lib/i18n';
 
 const TABS = [
   { key: 'patron', label: 'Rapport au patron' },
@@ -32,7 +33,7 @@ const TABS = [
   { key: 'achats', label: 'Achats' },
   { key: 'suivis', label: 'Clients à suivre' },
 ];
-const pct = (n: number) => (n * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+const pct = (n: number) => (n * 100).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' %';
 const range = (p: Period) => ({ from: p.from ?? '2000-01-01', to: p.to ?? today() });
 
 export function ReportsPage() {
@@ -150,7 +151,7 @@ export function Delta({ cur, prev, pct: isPct, invert }: { cur: number; prev: nu
   if (!prev) return <span className="muted small">nouveau</span>;
   const d = isPct ? cur - prev : (cur - prev) / Math.abs(prev);
   const good = invert ? d < 0 : d > 0;
-  return <span className={`kpi-delta ${d === 0 ? '' : good ? 'up' : 'down'}`}>{d > 0 ? '▲' : d < 0 ? '▼' : ''} {isPct ? (d * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' pt' : pct(Math.abs(d))}</span>;
+  return <span className={`kpi-delta ${d === 0 ? '' : good ? 'up' : 'down'}`}>{d > 0 ? '▲' : d < 0 ? '▼' : ''} {isPct ? (d * 100).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' pt' : pct(Math.abs(d))}</span>;
 }
 
 // ---------- Journal des ventes ----------

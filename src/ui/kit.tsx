@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { fmtMoney, curSym } from '../lib/currency';
 import { Icon, type IconName } from './icons';
+import { loc } from '../lib/i18n';
 
 // ---- Navigation (adresse après le #, compatible GitHub Pages et hors ligne) ----
 const routeSubs = new Set<() => void>();
@@ -325,8 +326,8 @@ export function Empty({ icon, title, children }: { icon: IconName; title: string
   );
 }
 
-export const fmtDateTime = (iso?: string) => iso ? new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-export const fmtDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+export const fmtDateTime = (iso?: string) => iso ? new Date(iso).toLocaleString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+export const fmtDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 export function timeAgo(iso?: string) {
   if (!iso) return 'jamais';
   const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);

@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { curSym, fmtMoney } from '../lib/currency';
 import { downloadBlob, writeXlsx, type Cell } from '../lib/xlsx';
 import { Button } from './kit';
+import { loc } from '../lib/i18n';
 
 export interface Col<T> {
   key: string;
@@ -16,7 +17,7 @@ export interface Col<T> {
   width?: number;                             // largeur Excel
 }
 
-const fmt = (v: number | string, money?: boolean) => (typeof v === 'number' ? (money ? fmtMoney(v) : v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })) : v);
+const fmt = (v: number | string, money?: boolean) => (typeof v === 'number' ? (money ? fmtMoney(v) : v.toLocaleString(loc(), { maximumFractionDigits: 1 })) : v);
 
 export function SortTable<T>({ cols, rows, empty = 'Aucune donnée sur la période', initialSort, limit, rowKey }: { cols: Col<T>[]; rows: T[]; empty?: string; initialSort?: { key: string; desc?: boolean }; limit?: number; rowKey: (r: T) => string }) {
   const shown = cols.filter((c) => !c.hide);

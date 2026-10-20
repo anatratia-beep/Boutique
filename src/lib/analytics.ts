@@ -6,6 +6,7 @@ import { isPickupZone, isWalkIn, sellingLines, type Courier, type Order } from '
 import { dayOf, type CashMove, type FinanceCategory } from './money';
 import { purchaseTotalAr, purchasePaid, purchaseTotal } from './purchases';
 import { adjustKept, type Adjust } from './lots';
+import { loc } from './i18n';
 
 export interface SaleLine {
   at: string; day: string; hour: number;
@@ -130,11 +131,11 @@ export function series(lines: SaleLine[], from: string, to: string, bucket: Buck
   else if (bucket === 'day') {
     for (let d = new Date(`${from}T12:00:00`); dayOf(d.toISOString()) <= to; d.setDate(d.getDate() + 1)) {
       const k = dayOf(d.toISOString());
-      keys.push({ key: k, label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }), long: d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) });
+      keys.push({ key: k, label: d.toLocaleDateString(loc(), { day: '2-digit', month: '2-digit' }), long: d.toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long' }) });
     }
   } else {
     for (let d = new Date(`${from.slice(0, 7)}-01T12:00:00`); `${d.getFullYear()}-${pad(d.getMonth() + 1)}` <= to.slice(0, 7); d.setMonth(d.getMonth() + 1)) {
-      keys.push({ key: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: d.toLocaleDateString('fr-FR', { month: 'short' }), long: d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) });
+      keys.push({ key: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: d.toLocaleDateString(loc(), { month: 'short' }), long: d.toLocaleDateString(loc(), { month: 'long', year: 'numeric' }) });
     }
   }
   const keyOf = (iso: string, day: string, hour: number) => (bucket === 'hour' ? String(Math.min(21, Math.max(6, hour))) : bucket === 'day' ? day : day.slice(0, 7));

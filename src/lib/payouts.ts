@@ -16,6 +16,7 @@ import { choiceBlocking, orderLabel, type Order } from './orders';
 import { allDeltas } from './boosts';
 import { payoutId, type Payout } from './closed';
 import { DEFAULT_COMPANY, type Company } from './settings';
+import { loc } from './i18n';
 
 export const weekOf = (monday: string) => ({ start: monday, end: addDays(monday, 5), days: Array.from({ length: 6 }, (_, i) => addDays(monday, i)) });
 export const usdRate = () => (get<Company>('settings', 'company')?.usdRate ?? DEFAULT_COMPANY.usdRate ?? 4700);
@@ -97,7 +98,7 @@ export async function cancelPayout(p: Payout, reason: string) {
 }
 
 export const catName = (id?: string) => (id ? get<FinanceCategory>('financeCategories', id)?.name : undefined);
-const fr = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const fr = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 /** Semaines terminées (lundi → samedi) avec ventes ou dépenses et sans versement validé (les 12 dernières). */
 export function unpaidWeeks(todayYmd: string, mondayOf: (d: string) => string): { monday: string; expected: number }[] {
@@ -132,7 +133,7 @@ export function monthly(n: number, todayYmd: string): { rows: MonthRow[]; pages:
     const cost = Object.values(g.cost).reduce((t, v) => t + v, 0);
     const paid = paidList.filter((p) => p.weekStart >= from && p.weekStart <= to);
     rows.push({
-      key, label: d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }), from, to, pages: g.pageTotals, sales: g.salesTotal, expenses: g.expensesTotal, rest: g.rest,
+      key, label: d.toLocaleDateString(loc(), { month: 'long', year: 'numeric' }), from, to, pages: g.pageTotals, sales: g.salesTotal, expenses: g.expensesTotal, rest: g.rest,
       paid: paid.reduce((t, p) => t + p.amount, 0), weeks: paid.length, boostAr, cost, profit: g.salesTotal - cost - boostAr - g.expensesTotal,
     });
   }
@@ -162,7 +163,7 @@ export function dayRecap(ymd: string, only?: { pages: string[]; userName?: strin
 const ar = (n: number) => `${fmtMoney(n)}`;
 export function dayRecapText(ymd: string, companyName: string, sender?: string, only?: { pages: string[]; userName?: string }, withExpenses = true) {
   const r = dayRecap(ymd, only);
-  const date = new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const date = new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
   const L: string[] = [];
   L.push(`*${companyName}*`, `*Récapitulatif du ${date}*`, r.mine ? `_Mes pages${sender ? ` (${sender})` : ''}_` : withExpenses ? '_Global : tous les vendeurs, caisse commune_' : '_Ventes du jour : tous les vendeurs_', '');
   // En tête, bien visibles : total, sur place, livraison (et pour le gérant : dépenses et net).
@@ -174,13 +175,13 @@ export function dayRecapText(ymd: string, companyName: string, sender?: string, 
   for (const p of r.pages) L.push(`• ${p.name} : ${ar(r.g.pageTotals[p.id])}`);
   L.push('');
   // Vendeur sans accès aux dépenses : récapitulatif des ventes seulement (le gérant gère les dépenses).
-  if (!withExpenses) { if (sender) L.push(`Envoyé par ${sender} le ${new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`); return L.join('\n'); }
+  if (!withExpenses) { if (sender) L.push(`Envoyé par ${sender} le ${new Date().toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`); return L.join('\n'); }
   L.push(r.mine ? '*Mes dépenses (caisse commune)*' : '*Dépenses de la caisse commune*');
   if (!r.g.expenseMoves.length) L.push('• Aucune dépense');
   for (const m of r.g.expenseMoves) L.push(`• ${m.label || catName(m.categoryId) || 'Dépense'}${m.label && catName(m.categoryId) ? ` (${catName(m.categoryId)})` : ''} : ${ar(-m.amount)}${m.userName ? ` — ${m.userName}` : ''}`);
   L.push(`*TOTAL DES DÉPENSES : ${ar(r.expenses)}*`, '');
   L.push(`*MONTANT NET DU JOUR : ${ar(r.net)}*`, '_(total des ventes − dépenses de la caisse commune)_');
-  if (sender) L.push('', `Envoyé par ${sender} le ${new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`);
+  if (sender) L.push('', `Envoyé par ${sender} le ${new Date().toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`);
   return L.join('\n');
 }
 

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { fmtMoney, parseMoney } from './currency';
 import { all, get, getMeta, newId, nowIso, save, useTable, type BaseRecord , bizNow, workDate } from './db';
 import { audit, currentUser } from './auth';
+import { loc, getLang } from './i18n';
 
 /** Valeur d'une variante de catégorie (ex. « B22 (baïonnette) », code court « B22 »). */
 export interface AttrValue { id: string; label: string; code: string; active?: boolean }
@@ -71,13 +72,15 @@ export const ADJUST_REASONS = ['Correction de saisie', 'Casse / abîmé', 'Perte
 // ---------- Formats ----------
 /** Montant dans la devise de la boutique (« 20 000 Ar », « 19,99 € »…). Nom historique : fmtAr. */
 export const fmtAr = fmtMoney;
-export const fmtNum = (n?: number | null, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString('fr-FR', { maximumFractionDigits: d }));
+export const fmtNum = (n?: number | null, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(loc(), { maximumFractionDigits: d }));
 /** Montant saisi dans la devise de la boutique (séparateurs, symbole et centimes acceptés). Nom historique : parseAr. */
 export const parseAr = parseMoney;
 export const parseNum = (s: string | number | null | undefined): number | undefined => {
   if (s == null) return undefined;
   if (typeof s === 'number') return isNaN(s) ? undefined : s;
-  const t = s.replace(/\s/g, '').replace(/ /g, '').replace(',', '.');
+  // En anglais la virgule sépare les milliers (« 1,234.5 ») ; en français c'est le séparateur décimal (« 1 234,5 »).
+  const raw = s.replace(/[\s\u00a0\u202f]/g, '');
+  const t = getLang() === 'en' ? raw.replace(/,/g, '') : raw.replace(',', '.');
   if (t === '') return undefined;
   const n = Number(t);
   return isNaN(n) ? undefined : n;

@@ -7,6 +7,7 @@ import { useMeta } from '../lib/db';
 import { PayDue } from '../pages/Expenses';
 import { Button, IconButton, PageHead } from './kit';
 import { Icon } from './icons';
+import { loc } from '../lib/i18n';
 
 function useTick() { const [, set] = useState(0); useEffect(() => { const t = setInterval(() => set((x) => x + 1), 60_000); return () => clearInterval(t); }, []); }
 
@@ -26,7 +27,7 @@ export function Clamp({ text, max = 110, strong }: { text: string; max?: number;
 
 const when = (iso: string) => {
   const d = new Date(iso); const sameDay = d.toDateString() === new Date().toDateString();
-  return sameDay ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return sameDay ? d.toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' }) : d.toLocaleString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
 function Item({ n, onPay, full }: { n: Notif & { until?: string }; onPay: (n: Notif) => void; full?: boolean }) {

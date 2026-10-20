@@ -6,6 +6,7 @@ import { courierSplit, fmtPhone, orderLabel, remaining, type Courier, type Order
 import { courierBalance, feeState, type CourierSettlement } from '../lib/money';
 import { Badge, Button, Empty, PageHead, fmtDateTime, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { loc } from '../lib/i18n';
 
 const itemName = (variantId: string) => {
   const v = get<Variant>('variants', variantId); const p = v && get<Product>('products', v.productId);
@@ -37,7 +38,7 @@ export function MyDeliveriesPage() {
         <div className="card stat"><span className="small muted">{bal.due >= 0 ? 'À rendre à la boutique (colis en cours compris)' : 'La boutique me doit'}</span><strong className={`stat-value num ${bal.due < 0 ? 'pos' : ''}`}>{fmtAr(Math.abs(bal.due))}</strong></div>
       </div>
       {bal.carry < 0 && (
-        <div className="notice notice-warn" style={{ flexWrap: 'wrap', alignItems: 'center' }}><Icon name="wallet" /><span style={{ flex: '1 1 220px' }}><strong>La boutique vous doit {fmtAr(-bal.carry)} de frais de livraison.</strong> {courier.feeClaimAt ? `Réclamé le ${new Date(courier.feeClaimAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} : le gérant est prévenu.` : 'Si on oublie de vous payer, réclamez-les.'}{deferredList.length > 0 && <span className="small" style={{ display: 'block' }}>Livraisons concernées : {deferredList.map((o) => `${o.number} (${fmtAr(courierSplit(o).fee)})`).join(', ')}</span>}</span>
+        <div className="notice notice-warn" style={{ flexWrap: 'wrap', alignItems: 'center' }}><Icon name="wallet" /><span style={{ flex: '1 1 220px' }}><strong>La boutique vous doit {fmtAr(-bal.carry)} de frais de livraison.</strong> {courier.feeClaimAt ? `Réclamé le ${new Date(courier.feeClaimAt).toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' })} : le gérant est prévenu.` : 'Si on oublie de vous payer, réclamez-les.'}{deferredList.length > 0 && <span className="small" style={{ display: 'block' }}>Livraisons concernées : {deferredList.map((o) => `${o.number} (${fmtAr(courierSplit(o).fee)})`).join(', ')}</span>}</span>
           <Button variant="ghost" onClick={async () => { await save('couriers', { id: courier.id, feeClaimAt: new Date().toISOString() }); toast('Réclamation envoyée au gérant'); }}>{courier.feeClaimAt ? 'Réclamer de nouveau' : 'Réclamer mes frais'}</Button></div>
       )}
       <div className="card card-flush">

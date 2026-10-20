@@ -14,8 +14,9 @@ import { Icon } from '../ui/icons';
 import { voidPurchase } from '../lib/corrections';
 import { ACCOUNTS, accountIds, addMove, atFor, type AccountId } from '../lib/money';
 import { ProductForm, Thumb } from './Products';
+import { loc } from '../lib/i18n';
 
-const money = (n: number, cur: 'RMB' | 'MGA') => cur === 'RMB' ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ¥` : fmtAr(n);
+const money = (n: number, cur: 'RMB' | 'MGA') => cur === 'RMB' ? `${n.toLocaleString(loc(), { maximumFractionDigits: 2 })} ¥` : fmtAr(n);
 const FLOW: PurchaseStatus[] = ['ordered', 'shipped', 'arrived', 'received'];
 
 export function PurchasesPage() {
@@ -326,7 +327,7 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
   async function submit() {
     setError(null);
     if (!lines.length) return setError('Ajoutez au moins un article.');
-    if (currency === 'RMB' && !parseNum(rate)) return setError('Indiquez le taux du RMB (combien de ${curSym()} pour 1 ¥).');
+    if (currency === 'RMB' && !parseNum(rate)) return setError(`Indiquez le taux du RMB (combien de ${curSym()} pour 1 ¥).`);
     if (lines.some((l) => l.qtyOrdered <= 0)) return setError('Chaque ligne doit avoir une quantité.');
     setBusy(true);
     try {

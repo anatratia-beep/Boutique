@@ -16,6 +16,7 @@ import { reportsDue } from '../pages/BossReport';
 import { currentUser } from './auth';
 import { fmtAr } from './catalog';
 import { allPages, boostDues, boostOwners, deadlineText, pageName } from './boosts';
+import { loc } from './i18n';
 
 export type Level = 'urgent' | 'important' | 'info';
 export const SNOOZE_H: Record<Level, number> = { urgent: 1, important: 2, info: 5 };
@@ -70,7 +71,7 @@ export function useNotifications() {
       for (const d of dueRecurring()) { if (!byRec.has(d.r.id)) byRec.set(d.r.id, []); byRec.get(d.r.id)!.push(d); }
       for (const [rid, ds] of byRec) {
         const d = ds[0];
-        out.push({ id: `due:${rid}:${d.period}`, level: 'urgent', title: `${d.r.label} ${d.r.kind === 'income' ? 'à encaisser' : 'à payer'} : ${fmtAr(d.r.amount)}`, text: `Échéance du ${new Date(d.date + 'T12:00:00').toLocaleDateString('fr-FR')}${d.r.time ? ` à ${d.r.time}` : ''}${ds.length > 1 ? ` · ${ds.length} échéances en attente` : ''}`, href: '#/depenses', due: d });
+        out.push({ id: `due:${rid}:${d.period}`, level: 'urgent', title: `${d.r.label} ${d.r.kind === 'income' ? 'à encaisser' : 'à payer'} : ${fmtAr(d.r.amount)}`, text: `Échéance du ${new Date(d.date + 'T12:00:00').toLocaleDateString(loc())}${d.r.time ? ` à ${d.r.time}` : ''}${ds.length > 1 ? ` · ${ds.length} échéances en attente` : ''}`, href: '#/depenses', due: d });
       }
     }
     if (can('couriers.settle')) {
@@ -79,7 +80,7 @@ export function useNotifications() {
         const owed = -courierBalance(c.id).carry;
         if (owed <= 0) continue;
         const evening = new Date().getHours() >= 17;
-        out.push({ id: `frais:${c.id}:${today()}${c.feeClaimAt ? ':r' + c.feeClaimAt : ''}`, level: c.feeClaimAt || evening ? 'urgent' : 'important', title: `${c.feeClaimAt ? `${c.name} réclame ses frais` : `Frais de livraison à payer à ${c.name}`} : ${fmtAr(owed)}`, text: c.feeClaimAt ? `Réclamé le ${new Date(c.feeClaimAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}` : 'Frais différés : à régler au plus tard à la clôture du soir', href: '#/livraisons/retour' });
+        out.push({ id: `frais:${c.id}:${today()}${c.feeClaimAt ? ':r' + c.feeClaimAt : ''}`, level: c.feeClaimAt || evening ? 'urgent' : 'important', title: `${c.feeClaimAt ? `${c.name} réclame ses frais` : `Frais de livraison à payer à ${c.name}`} : ${fmtAr(owed)}`, text: c.feeClaimAt ? `Réclamé le ${new Date(c.feeClaimAt).toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' })}` : 'Frais différés : à régler au plus tard à la clôture du soir', href: '#/livraisons/retour' });
       }
     }
     if (can('deliveries.manage')) {
@@ -112,7 +113,7 @@ export function useNotifications() {
         const mine = allPages().filter((p) => me.roleId === 'role-manager' || can('users.manage') || (me.pageIds ?? []).includes(p.id)).map((p) => p.id);
         const dues = boostDues(new Date(), mine);
         const late = dues.filter((d) => d.late), soon = dues.filter((d) => !d.late);
-        if (late.length) out.push({ id: `boost-late:${late.map((d) => d.pageId + d.date).join(',')}`, level: 'urgent', title: `Faites votre compte boost : ${late.length} en retard`, text: late.slice(0, 4).map((d) => `${pageName(d.pageId)} (${new Date(`${d.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' })})`).join(', '), href: '#/boosts/suivi' });
+        if (late.length) out.push({ id: `boost-late:${late.map((d) => d.pageId + d.date).join(',')}`, level: 'urgent', title: `Faites votre compte boost : ${late.length} en retard`, text: late.slice(0, 4).map((d) => `${pageName(d.pageId)} (${new Date(`${d.date}T12:00:00`).toLocaleDateString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' })})`).join(', '), href: '#/boosts/suivi' });
         else if (soon.length) out.push({ id: `boost-soon:${soon[0].date}`, level: 'important', title: `Compte boost à faire avant ${deadlineText(soon[0].date)}`, text: [...new Set(soon.map((d) => pageName(d.pageId)))].slice(0, 5).join(', '), href: '#/boosts/suivi' });
       }
       if (can('records.correct')) {
@@ -123,7 +124,7 @@ export function useNotifications() {
     if (can('records.correct')) {
       // Actions importantes (annulation, correction, suppression, restauration…) à vérifier par le super-admin / gérant.
       const todo = auditRows.filter((r) => r.review === 'todo').sort((a, b) => b.at.localeCompare(a.at));
-      if (todo.length) out.push({ id: `audit:${todo[0].id}`, level: 'urgent', title: `${todo.length} action(s) importante(s) à vérifier`, text: todo.slice(0, 3).map((r) => `${r.action} (${r.userName}, ${new Date(r.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})`).join(' · '), href: '#/journal' });
+      if (todo.length) out.push({ id: `audit:${todo[0].id}`, level: 'urgent', title: `${todo.length} action(s) importante(s) à vérifier`, text: todo.slice(0, 3).map((r) => `${r.action} (${r.userName}, ${new Date(r.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})`).join(' · '), href: '#/journal' });
     }
     if (can('users.manage')) {
       const open = conflicts.filter((c) => !c.resolved).length;

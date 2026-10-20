@@ -20,6 +20,7 @@ import { dayOf, type CashMove } from './money';
 import { courierSplit, isPickupZone, isWalkIn, type Order, type PayMethod } from './orders';
 import type { Category } from './catalog';
 import { COURIER_ROLE, SUPERADMIN_ROLE } from './permissions';
+import { loc } from './i18n';
 
 export interface Handover extends BaseRecord {
   userId: string; userName: string; date: string;
@@ -106,7 +107,7 @@ export function sellersOfDay(date: string, includeEmpty = true): SellerDay[] {
 export async function receiveHandover(d: SellerDay, amount: number, note?: string) {
   if (!(amount >= 0) || !isFinite(amount)) throw new Error('Montant reçu invalide.');
   const cur = handoverOf(d.user.id, d.date);
-  if (cur?.status === 'received') throw new Error(`Déjà reçu le ${new Date(cur.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} par ${cur.byName ?? '?'}.`);
+  if (cur?.status === 'received') throw new Error(`Déjà reçu le ${new Date(cur.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} par ${cur.byName ?? '?'}.`);
   const me = currentUser();
   const gap = amount - d.toPay;
   await save('handovers', {

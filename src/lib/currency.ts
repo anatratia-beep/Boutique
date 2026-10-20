@@ -1,6 +1,7 @@
 // Devise de la boutique : choisie dans Paramètres → Société (Ariary par défaut).
 // Tous les montants du logiciel sont exprimés dans cette devise ; certaines ont des centimes (€, $, Rs…), d'autres non (Ar, FCFA…).
 import { get } from './db';
+import { loc } from './i18n';
 
 export interface CurrencyDef { code: string; symbol: string; decimals: number; before?: boolean; name: string }
 
@@ -63,7 +64,7 @@ export function roundMoney(n: number): number {
 /** Nombre formaté sans symbole : « 20 000 », « 19,99 ». */
 export function fmtAmount(n: number): string {
   const d = moneyDecimals();
-  return roundMoney(n).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  return roundMoney(n).toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
 /** Montant avec symbole : « 20 000 Ar », « 19,99 € », « $ 19,99 ». */

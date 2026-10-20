@@ -7,6 +7,7 @@ import { addMoves, nextNumber, stockOf, variantLabel, type Product, type StockMo
 import { DEFAULT_COMPANY, type Company } from './settings';
 import { assertOpenAt, assertOpenNow } from './closed';
 import { adjustsKeptTotal, adjustsTotal, computeAdjusts, type Adjust } from './lots';
+import { loc } from './i18n';
 
 export interface Zone extends BaseRecord { name: string; fee: number; order?: number; active: boolean; pickup?: boolean }
 /** Zone « Sur boutique » : le client vient chercher, pas de frais ni de livreur. */
@@ -140,9 +141,22 @@ export function internalPrice(variantId: string, step = 1) {
 }
 
 // ---------- Téléphones ----------
+/** Indicatif téléphonique du pays de la boutique (Paramètres → Société), 261 par défaut. */
+export const dialCode = () => ((get<Company>('settings', 'company')?.dialCode || '261').replace(/\D/g, '') || '261');
+/** Numéro au format international pour WhatsApp (wa.me) : « 034 12 345 67 » → « 261341234567 ». */
+export function waNumber(p?: string): string {
+  const raw = (p || '').trim();
+  if (!raw) return '';
+  if (/^(\+|00)/.test(raw)) return raw.replace(/\D/g, '').replace(/^00/, '');
+  const cc = dialCode(), d = raw.replace(/\D/g, '');
+  if (d.startsWith(cc) && d.length > cc.length + 7) return d;
+  return cc + d.replace(/^0+/, '');
+}
 export function normPhone(p: string) {
   let d = (p || '').replace(/\D/g, '');
-  if (d.startsWith('261')) d = '0' + d.slice(3);
+  const cc = dialCode();
+  if (d.startsWith('261') && d.length >= 12) d = '0' + d.slice(3);
+  else if (cc !== '261' && d.startsWith(cc) && d.length > cc.length + 7) d = '0' + d.slice(cc.length);
   if (d.length === 9 && !d.startsWith('0')) d = '0' + d;
   return d;
 }
@@ -195,7 +209,7 @@ export async function setOrderDate(o: Order, iso: string, reason?: string) {
   const payments = (o.payments || []).map((p) => (moveAt(p) ? { ...p, at: iso } : p));
   for (const p of (o.payments || []).filter(moveAt)) assertOpenAt(p.at, 'Acompte');
   const u = currentUser();
-  const f = (x: string) => new Date(x).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const f = (x: string) => new Date(x).toLocaleString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' });
   const text = `Date de commande : ${f(old)} → ${f(iso)}${reason ? ` — ${reason}` : ''}`;
   await save('orders', { id: o.id, orderDate: iso, payments, events: [...(o.events || []), { at: new Date().toISOString(), text, user: u?.fullName }] });
   await audit('Date de commande changée', `${o.number} : ${text}`, 'orders', o.id);
@@ -388,7 +402,7 @@ export function returnAt(ymd: string, list: Pick<Order, 'dispatchedAt' | 'number
   const today = ymdOf(new Date(bizNow()));
   if (!ymd || ymd >= today) { if (ymd > today) throw new Error('La date du retour ne peut pas être dans le futur.'); return bizNow(); }
   const early = list.find((o) => o.dispatchedAt && ymdOf(new Date(o.dispatchedAt)) > ymd);
-  if (early) throw new Error(`Le colis ${early.number} est parti le ${new Date(early.dispatchedAt!).toLocaleDateString('fr-FR')} : son retour ne peut pas être daté d'avant.`);
+  if (early) throw new Error(`Le colis ${early.number} est parti le ${new Date(early.dispatchedAt!).toLocaleDateString(loc())} : son retour ne peut pas être daté d'avant.`);
   const last = Math.max(0, ...list.filter((o) => o.dispatchedAt && ymdOf(new Date(o.dispatchedAt)) === ymd).map((o) => new Date(o.dispatchedAt!).getTime() + 60_000));
   return new Date(Math.max(new Date(`${ymd}T18:00:00`).getTime(), last)).toISOString();
 }
@@ -441,7 +455,7 @@ export async function repairExchangeFees() {
     const fee = (o.deliveryFee || 0) - extra;
     const at = new Date().toISOString();
     await save('orders', { id: o.id, deliveryFee: fee, ...(o.feeCharged === o.deliveryFee ? { feeCharged: fee } : {}), exchangeFeeFixed: true,
-      events: [...(o.events || []), { at, text: `Frais de livraison corrigés : ${(o.deliveryFee || 0).toLocaleString('fr-FR')} → ${fmtMoney(fee)} (frais de l'échange comptés deux fois)` }] });
+      events: [...(o.events || []), { at, text: `Frais de livraison corrigés : ${(o.deliveryFee || 0).toLocaleString(loc())} → ${fmtMoney(fee)} (frais de l'échange comptés deux fois)` }] });
     await audit('Frais corrigés', `${o.number} : frais de l'échange retirés (${fmtMoney(extra)} en double)`, 'orders', o.id);
   }
 }
@@ -603,7 +617,7 @@ export async function postponeOrder(o: Order, d: { to?: string; reason?: string 
     await addMoves(o.lines.map((l) => ({ variantId: l.variantId, qty: l.qty, type: 'delivery_return' as const, refType: 'order', refId: o.id, reason: `${o.number} — livraison reportée, colis revenu en boutique`, at })));
   }
   const n = reportCount(o) + 1;
-  const toTxt = d.to ? ` au ${new Date(`${d.to}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit' })}` : '';
+  const toTxt = d.to ? ` au ${new Date(`${d.to}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit' })}` : '';
   await save('orders', {
     id: o.id, status: o.status === 'out' ? 'ready' : o.status, wantedDate: d.to || o.wantedDate,
     ...(o.status === 'out' ? { courierId: null as unknown as undefined, dispatchedAt: null as unknown as undefined, statusDates: { ...(o.statusDates || {}), ready: at } } : {}),
@@ -688,11 +702,11 @@ export function paymentDateError(o: Order, iso: string, oldIso?: string): string
   const t = new Date(iso);
   if (isNaN(t.getTime())) return 'Date invalide.';
   if (t.getTime() > Math.max(Date.now(), o.orderDate ? new Date(o.orderDate).getTime() : 0) + 60_000) return 'La date du paiement ne peut pas être dans le futur (au plus tard la date de commande).';
-  if (o.createdAt && ymdOf(new Date(iso)) < ymdOf(new Date(o.createdAt < orderDay(o) ? o.createdAt : orderDay(o)))) return `Le paiement ne peut pas être avant la commande (${new Date(o.createdAt).toLocaleDateString('fr-FR')}).`;
+  if (o.createdAt && ymdOf(new Date(iso)) < ymdOf(new Date(o.createdAt < orderDay(o) ? o.createdAt : orderDay(o)))) return `Le paiement ne peut pas être avant la commande (${new Date(o.createdAt).toLocaleDateString(loc())}).`;
   const courierFlow = !!o.courierId && !!o.dispatchedAt && !isPickupZone(o.zoneId) && !isWalkIn(o);
   if (courierFlow && o.courierSettledAt) return 'Le compte avec le livreur est déjà fait pour cette commande : la date ne peut plus changer.';
   const closedAt = o.returnedAt ?? o.statusDates?.delivered;
-  if (!courierFlow && closedAt && ['delivered', 'partial'].includes(o.status) && t.getTime() > new Date(closedAt).getTime() + 60_000) return `Le paiement ne peut pas être après la remise de la commande (${new Date(closedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}).`;
+  if (!courierFlow && closedAt && ['delivered', 'partial'].includes(o.status) && t.getTime() > new Date(closedAt).getTime() + 60_000) return `Le paiement ne peut pas être après la remise de la commande (${new Date(closedAt).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}).`;
   for (const [d, what] of [[iso, 'Nouvelle date'], ...(oldIso ? [[oldIso, 'Date actuelle']] : [])] as [string, string][]) {
     try { assertOpenAt(d, what === 'Nouvelle date' ? 'Paiement à cette date' : 'Changement de date'); } catch (e: any) { return e.message; }
   }
@@ -713,7 +727,7 @@ export async function editPayment(o: Order, paymentId: string, amount: number, m
   const who = (b: 'shop' | 'courier') => (b === 'shop' ? 'boutique' : 'livreur');
   const payments = o.payments.map((p) => (p.id === paymentId ? { ...p, amount, method, receivedBy: toBy, courierId: toBy === 'courier' ? o.courierId : undefined, ...(atChange ? { at: atChange } : {}),
     edits: [...(p.edits || []), { at, user: u?.fullName, fromAmount: p.amount, toAmount: amount, fromMethod: p.method, toMethod: method, reason, ...(toBy !== p.receivedBy ? { fromBy: p.receivedBy, toBy } : {}), ...(atChange ? { fromAt: p.at, toAt: atChange } : {}) }] } : p));
-  const dt = (x: string) => new Date(x).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const dt = (x: string) => new Date(x).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const text = `Paiement corrigé : ${fmtMoney(old.amount)} (${PAY_METHODS[old.method]}, ${who(old.receivedBy)}) → ${fmtMoney(amount)} (${PAY_METHODS[method]}, ${who(toBy)})${atChange ? ` · date ${dt(old.at)} → ${dt(atChange)}` : ''}${reason ? ` — ${reason}` : ''}`;
   await save('orders', { id: o.id, payments, events: [...(o.events || []), { at, text, user: u?.fullName }] });
   await audit('Paiement corrigé', `${o.number} : ${text}`, 'orders', o.id);

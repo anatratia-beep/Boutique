@@ -193,7 +193,7 @@ export async function categoryTemplate(cat: Category) {
     ] },
     { name: 'tsena', columns: [], rows: [], notes: [`${MARK}${cat.id}`], hidden: true },
   ];
-  return writeXlsx(sheets);
+  return writeXlsx(sheets, { translate: false });
 }
 
 /** Page visée par un fichier modèle (onglet caché « tsena »). */

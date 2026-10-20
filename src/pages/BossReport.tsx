@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { roundMoney } from '../lib/currency';
 import { setMeta, useMeta, useTable } from '../lib/db';
 import { fmtAr } from '../lib/catalog';
-import { fmtPhone, normPhone } from '../lib/orders';
+import { fmtPhone, normPhone, waNumber } from '../lib/orders';
+import { trLines } from '../lib/i18n';
 import { today } from '../lib/money';
 import { PKIND, bossReport, periodOf, reportText, shiftAnchor, type PKind, type PageRow, type Report, type StockRow } from '../lib/report';
 import { a4Table, arA4, h, printA4 } from '../lib/a4';
@@ -14,8 +15,9 @@ import { Button, Choice, TextField, toast, useRoute } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { SortTable, exportTables, type Col } from '../ui/table';
 import { Delta } from './Reports';
+import { loc } from '../lib/i18n';
 
-const pctTxt = (n: number) => (n * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+const pctTxt = (n: number) => (n * 100).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' %';
 
 /** Clé « déjà envoyé » d'un rapport (pour ne plus le rappeler). */
 export const reportKey = (kind: PKind, from: string) => `${kind}:${from}`;
@@ -38,16 +40,16 @@ export function BossReport() {
   const markSent = () => setMeta('reportSent', { ...sent, [key]: new Date().toISOString() });
   const go = (dir: -1 | 1) => { const n = shiftAnchor(kind, anchor, dir, custom); setAnchor(n.anchor); if (n.custom) setCustom(n.custom); };
   const isDay = kind === 'day';
-  const text = reportText(kind, per.label, r, company.name);
-  const phone = normPhone(company.bossPhone || '');
-  const intl = phone ? '261' + phone.replace(/^0/, '') : '';
+  const text = trLines(reportText(kind, per.label, r, company.name));
+  const phone = company.bossPhone || '';
+  const intl = waNumber(phone);
 
   const goal = kind === 'day' ? company.targetDay : kind === 'month' ? company.targetMonth : undefined;
   const tiles: { label: string; cur: number; prev: number; invert?: boolean; strong?: boolean; hint?: string }[] = [
     { label: "Chiffre d'affaires", cur: r.revenue, prev: p.revenue, hint: `${r.orders} vente(s) · ${r.pieces} pièce(s)${goal ? ` · objectif ${fmtAr(goal)} (${Math.round((r.revenue / goal) * 100)} %)` : ''}` },
     { label: 'Dépenses', cur: r.expenses, prev: p.expenses, invert: true },
     { label: 'Reste (CA − dépenses)', cur: r.rest, prev: p.rest },
-    ...(isDay ? [] : [{ label: 'Boost Facebook', cur: r.boost, prev: p.boost, invert: true, hint: r.boostUsd ? `${r.boostUsd.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $` : undefined }]),
+    ...(isDay ? [] : [{ label: 'Boost Facebook', cur: r.boost, prev: p.boost, invert: true, hint: r.boostUsd ? `${r.boostUsd.toLocaleString(loc(), { maximumFractionDigits: 2 })} $` : undefined }]),
     { label: isDay ? 'Bénéfice net (sans boost)' : 'Bénéfice net', cur: isDay ? r.netNoBoost : r.net, prev: isDay ? p.netNoBoost : p.net, strong: true, hint: isDay ? `CA − coût des articles (${fmtAr(r.cost)}) − dépenses` : `CA − coût des articles (${fmtAr(r.cost)}) − dépenses − boost` },
   ];
   const pageCols: Col<PageRow>[] = [
@@ -134,7 +136,7 @@ export function BossReport() {
       {!isDay && <section className="card stack-s">
         <h2>Stock (au prix de revient)</h2>
         <div className="money-lines stock-flow">
-          <div><span>Valeur du stock au début ({new Date(`${r.from}T12:00:00`).toLocaleDateString('fr-FR')})</span><strong className="num">{fmtAr(r.stock.start)}</strong></div>
+          <div><span>Valeur du stock au début ({new Date(`${r.from}T12:00:00`).toLocaleDateString(loc())})</span><strong className="num">{fmtAr(r.stock.start)}</strong></div>
           <div><span>+ Entrées (réceptions, ajustements)</span><strong className="num">{fmtAr(r.stock.in)}</strong></div>
           <div><span>− Valeur du stock à la fin</span><strong className="num">{fmtAr(r.stock.end)}</strong></div>
           <div className="ml-strong"><span>= Valeur du stock sorti</span><strong className="num">{fmtAr(r.stock.out)}</strong></div>
@@ -146,7 +148,7 @@ export function BossReport() {
       </section>}
 
       <section className="card stack-s">
-        <div className="row-between"><h2>Envoyer au patron</h2>{sent[key] && <span className="small ok-text"><Icon name="check" size={14} /> Envoyé le {new Date(sent[key]).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>}</div>
+        <div className="row-between"><h2>Envoyer au patron</h2>{sent[key] && <span className="small ok-text"><Icon name="check" size={14} /> Envoyé le {new Date(sent[key]).toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' })}</span>}</div>
         <pre className="recap-text">{text}</pre>
         <div className="row">
           <a className="btn btn-primary btn-wa" href={`https://wa.me/${intl}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" onClick={markSent}><Icon name="share" />WhatsApp{company.bossPhone ? ` (${fmtPhone(company.bossPhone)})` : ''}</a>

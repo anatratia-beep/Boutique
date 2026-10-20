@@ -16,6 +16,7 @@ import { Help, Badge, Button, FilterSelect, Confirm, Empty, IconButton, Modal, P
 import { Icon } from '../ui/icons';
 import { ListDates, PeriodPicker, defaultPeriod, inPeriod, type ListOrder, type Period } from '../ui/period';
 import { SortTable, exportTables, type Col } from '../ui/table';
+import { loc } from '../lib/i18n';
 
 const TABS = [
   { key: 'liste', label: 'Dépenses' },
@@ -127,7 +128,7 @@ function HabitFields({ h, set, rec }: { h: Habit; set: (h: Habit) => void; rec?:
             <SelectField label="Payé depuis" value={h.account} onChange={(v) => up({ account: v as AccountId })} options={accountOptions()} />
             {h.rhythm === 'weekly' && <SelectField label="Jour de la semaine" value={h.weekday} onChange={(v) => up({ weekday: v })} options={WEEKDAYS.map((w, i) => ({ value: String(i), label: w }))} />}
             {(h.rhythm === 'monthly' || h.rhythm === 'yearly') && <TextField label="Jour du mois" value={h.day} onChange={(v) => up({ day: v })} inputMode="numeric" />}
-            {h.rhythm === 'yearly' && <SelectField label="Mois" value={h.month} onChange={(v) => up({ month: v })} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2026, i, 1).toLocaleDateString('fr-FR', { month: 'long' }) }))} />}
+            {h.rhythm === 'yearly' && <SelectField label="Mois" value={h.month} onChange={(v) => up({ month: v })} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2026, i, 1).toLocaleDateString(loc(), { month: 'long' }) }))} />}
           </div>}
         </>)}
     </div>
@@ -275,7 +276,7 @@ function ExpenseList() {
   // Affichage lisible sans rien de coupé : date sur 2 lignes, catégorie et type sous la description, saisi par sous le compte.
   // (Catégorie, Type et Saisi par restent des colonnes à part dans l'export Excel.)
   const cols: Col<CashMove>[] = [
-    { key: 'd', label: 'Date', value: (m) => m.at, render: (m) => <div className="cell-wrap nowrap"><strong className="num">{fmtDate(dayOf(m.at))}</strong><div className="small muted num">{new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div></div>, width: 18 },
+    { key: 'd', label: 'Date', value: (m) => m.at, render: (m) => <div className="cell-wrap nowrap"><strong className="num">{fmtDate(dayOf(m.at))}</strong><div className="small muted num">{new Date(m.at).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' })}</div></div>, width: 18 },
     { key: 'l', label: 'Description', value: (m) => m.label ?? '', render: (m) => <div className="cell-wrap exp-desc"><strong>{m.label || '—'}</strong><div className="small muted">{[name(m.categoryId), name(typeOf(m))].filter(Boolean).join(' · ')}</div>{m.note ? <div className="small muted">{m.note}</div> : null}</div>, width: 30 },
     { key: 'c', label: 'Catégorie', value: (m) => name(m.categoryId), width: 22, hide: true },
     { key: 't', label: 'Type', value: (m) => name(typeOf(m)), width: 18, hide: true },
@@ -378,7 +379,7 @@ function FixedForm({ rec, onClose }: { rec?: Recurring; onClose: () => void }) {
           <SelectField label="Répétition" value={freq} onChange={(v) => setFreq(v as Freq)} options={Object.entries(FREQS).map(([value, label]) => ({ value, label }))} />
           {freq === 'weekly' && <SelectField label="Jour de la semaine" value={weekday} onChange={setWeekday} options={WEEKDAYS.map((w, i) => ({ value: String(i), label: w }))} />}
           {(freq === 'monthly' || freq === 'yearly') && <TextField label="Jour du mois" value={day} onChange={setDay} inputMode="numeric" />}
-          {freq === 'yearly' && <SelectField label="Mois" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2026, i, 1).toLocaleDateString('fr-FR', { month: 'long' }) }))} />}
+          {freq === 'yearly' && <SelectField label="Mois" value={month} onChange={setMonth} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2026, i, 1).toLocaleDateString(loc(), { month: 'long' }) }))} />}
           <TextField label="Heure du rappel" type="time" value={time} onChange={setTime} />
           <TextField label="À partir du mois" type="month" value={start} onChange={setStart} />
         </div>

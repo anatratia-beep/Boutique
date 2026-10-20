@@ -33,6 +33,7 @@ import { EveningRecapBanner, RECAP_HREF } from '../ui/eveningRecap';
 import { HEALTH, SALES_DAYS, healthOf, soldByVariant } from '../lib/stockRank';
 import { stockOf, type Variant } from '../lib/catalog';
 import { Badge } from '../ui/kit';
+import { loc } from '../lib/i18n';
 
 export function DashboardPage() {
   const me = useMe();
@@ -57,7 +58,7 @@ function Board() {
   const hiddenFor = useMeta<string | null>('secretNoticeHidden', null);
   const hour = new Date().getHours();
   const hello = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const today = new Date().toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const team = users.filter((u) => u.id !== SUPERADMIN_ID && u.active);
 
   const steps = [
@@ -158,7 +159,7 @@ function Board() {
   );
 }
 
-const pct = (n: number) => (Math.abs(n) < 0.0005 ? 0 : n * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+const pct = (n: number) => (Math.abs(n) < 0.0005 ? 0 : n * 100).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' %';
 
 function usePeriod() {
   const saved = useMeta<Period | null>('dashPeriod', null);
@@ -213,7 +214,7 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
   if (part === 'summary') return (
     <section className="card summary-hero">
       <div className="summary-head">
-        <div><h2>Résumé</h2><p className="small muted">{period.key === 'today' ? "Aujourd'hui" : period.from && period.to ? (period.from === period.to ? new Date(`${period.from}T12:00:00`).toLocaleDateString('fr-FR') : `Du ${new Date(`${period.from}T12:00:00`).toLocaleDateString('fr-FR')} au ${new Date(`${period.to}T12:00:00`).toLocaleDateString('fr-FR')}`) : 'Toute la période'}</p></div>
+        <div><h2>Résumé</h2><p className="small muted">{period.key === 'today' ? "Aujourd'hui" : period.from && period.to ? (period.from === period.to ? new Date(`${period.from}T12:00:00`).toLocaleDateString(loc()) : `Du ${new Date(`${period.from}T12:00:00`).toLocaleDateString(loc())} au ${new Date(`${period.to}T12:00:00`).toLocaleDateString(loc())}`) : 'Toute la période'}</p></div>
         <div className="summary-tools"><PeriodPicker value={period} onChange={setPeriod} />{can('reports.view') && <a className="link-btn summary-link" href="#/rapports/patron">Rapport au patron ›</a>}</div>
       </div>
       <div className="summary-grid">
@@ -281,10 +282,10 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
         <div className="card stack-s">
           <h2>Stock et arrivages</h2>
           <table className="kv-table"><tbody>
-            <tr><td>Pièces en stock</td><td>{stock.pieces.toLocaleString('fr-FR')}</td></tr>
+            <tr><td>Pièces en stock</td><td>{stock.pieces.toLocaleString(loc())}</td></tr>
             {cost && <tr><td>Valeur du stock (coût)</td><td>{fmtAr(stock.value)}</td></tr>}
             <tr><td>Valeur du stock (prix de vente)</td><td>{fmtAr(stock.retail)}</td></tr>
-            <tr><td>Arrivages en attente</td><td>{purchases.count} commande(s) · {purchases.pieces.toLocaleString('fr-FR')} pcs</td></tr>
+            <tr><td>Arrivages en attente</td><td>{purchases.count} commande(s) · {purchases.pieces.toLocaleString(loc())} pcs</td></tr>
             {cost && purchases.unpaidAr > 0 && <tr><td>Reste à payer aux fournisseurs</td><td>{fmtAr(purchases.unpaidAr)}</td></tr>}
             <tr><td>En livraison maintenant</td><td>{out.length} commande(s)</td></tr>
           </tbody></table>
@@ -478,7 +479,7 @@ function SalesExtras() {
   const isToday = period.key === 'today';
   const last = isToday ? sameDayLastWeek() : null;
   const todayRev = isToday ? kpis(salesLedger(todayYmd(), todayYmd())).revenue : 0;
-  const dayName = new Date().toLocaleDateString('fr-FR', { weekday: 'long' });
+  const dayName = new Date().toLocaleDateString(loc(), { weekday: 'long' });
   if (!goals.length && !last) return null;
   return (
     <div className="card stack-s">
@@ -507,7 +508,7 @@ function Watchlist() {
     <div className="card stack-s watch">
       <h2><Icon name="alert" /> À surveiller</h2>
       {cov.length > 0 && <div><strong className="small">Bientôt en rupture (au rythme des 30 derniers jours)</strong>
-        <table className="kv-table"><tbody>{cov.map((c) => <tr key={c.product.id}><td>{c.product.name} <span className="muted small">· {c.product.code} · {c.stock} pcs, ~{c.perDay.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}/jour</span></td><td className={c.days <= 3 ? 'neg' : ''}>{c.days < 1 ? 'moins d’1 jour' : `~${Math.round(c.days)} jour(s)`}</td></tr>)}</tbody></table></div>}
+        <table className="kv-table"><tbody>{cov.map((c) => <tr key={c.product.id}><td>{c.product.name} <span className="muted small">· {c.product.code} · {c.stock} pcs, ~{c.perDay.toLocaleString(loc(), { maximumFractionDigits: 1 })}/jour</span></td><td className={c.days <= 3 ? 'neg' : ''}>{c.days < 1 ? 'moins d’1 jour' : `~${Math.round(c.days)} jour(s)`}</td></tr>)}</tbody></table></div>}
       {roi.length > 0 && <div><strong className="small">Boosts pas rentables ce mois</strong>
         <table className="kv-table"><tbody>{roi.map((r) => <tr key={r.pageId}><td>{r.name} <span className="muted small">· 1 $ rapporte {fmtAr(r.perUsd)} de CA</span></td><td className="neg">{fmtAr(r.profit)}</td></tr>)}</tbody></table></div>}
       {an.length > 0 && <div><strong className="small">À vérifier (7 derniers jours)</strong>

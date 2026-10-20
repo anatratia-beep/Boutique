@@ -7,6 +7,7 @@ import { useTable } from '../lib/db';
 import { Badge, Button, Empty, Modal, PageHead, TextField, fmtDateTime, toast } from '../ui/kit';
 import { PeriodPicker, inPeriod, type Period, defaultPeriod } from '../ui/period';
 import { exportTables, type Col } from '../ui/table';
+import { loc } from '../lib/i18n';
 
 const TONE: Record<AuditLevel, 'danger' | 'warn' | 'neutral'> = { high: 'danger', medium: 'warn', low: 'neutral' };
 const LINK: Record<string, string> = { orders: '#/commandes/', receptions: '#/receptions/', purchases: '#/achats/', products: '#/articles/' };
@@ -41,7 +42,7 @@ export function AuditPage() {
   }, [rows, period, userId, action, level, q, todoOnly]);
 
   const cols: Col<any>[] = [
-    { key: 'd', label: 'Date et heure', value: (r) => new Date(r.at).toLocaleString('fr-FR'), width: 20 },
+    { key: 'd', label: 'Date et heure', value: (r) => new Date(r.at).toLocaleString(loc()), width: 20 },
     { key: 'u', label: 'Utilisateur', value: (r) => r.userName, width: 18 }, { key: 'ro', label: 'Rôle', value: (r) => r.role ?? '', width: 14 },
     { key: 'l', label: 'Importance', value: (r) => AUDIT_LEVEL[lv(r)], width: 11 }, { key: 'a', label: 'Action', value: (r) => r.action, width: 24 },
     { key: 't', label: 'Détails', value: (r) => r.details, width: 60 }, { key: 'v', label: 'Vérification', value: (r) => (r.review === 'ok' ? `Vérifié par ${r.reviewBy}` : r.review === 'suspect' ? `SUSPECT (${r.reviewBy}) ${r.reviewNote ?? ''}` : r.review === 'todo' ? 'À vérifier' : ''), width: 24 },

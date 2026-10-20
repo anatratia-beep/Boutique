@@ -7,12 +7,13 @@ import { moneyOut, salesLedger } from './analytics';
 import { rootOf } from './scope';
 import { addDays, dayOf, mondayOf, today } from './money';
 import { grid, usdRate } from './payouts';
+import { loc } from './i18n';
 
 export type PKind = 'day' | 'week' | 'month' | 'year' | 'custom';
 export const PKIND: Record<PKind, string> = { day: 'Jour', week: 'Semaine', month: 'Mois', year: 'Année', custom: 'Période' };
 const pad = (n: number) => String(n).padStart(2, '0');
-const fr = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const frs = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const fr = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const frs = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(loc(), { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** Période contenant la date `anchor`. Semaine : du lundi au samedi (le dimanche est compté s'il y a eu des ventes). */
 export function periodOf(kind: PKind, anchor: string, custom?: { from: string; to: string }): { from: string; to: string; label: string } {
@@ -24,7 +25,7 @@ export function periodOf(kind: PKind, anchor: string, custom?: { from: string; t
   if (kind === 'month') {
     const [y, m] = anchor.split('-').map(Number);
     const last = new Date(y, m, 0).getDate();
-    return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}`, label: new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) };
+    return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}`, label: new Date(y, m - 1, 1).toLocaleDateString(loc(), { month: 'long', year: 'numeric' }) };
   }
   if (kind === 'year') { const y = anchor.slice(0, 4); return { from: `${y}-01-01`, to: `${y}-12-31`, label: `Année ${y}` }; }
   return { from: anchor, to: anchor, label: fr(anchor) };

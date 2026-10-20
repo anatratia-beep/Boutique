@@ -1,14 +1,15 @@
 // Graphique en barres simple (une série, couleur de la marque) avec info-bulle au survol et vue tableau.
 import { useEffect, useRef, useState } from 'react';
+import { loc } from '../lib/i18n';
 
 export interface Bar { key: string; label: string; long: string; value: number; extra?: string }
 
 const short = (n: number) => {
   const a = Math.abs(n);
-  if (a >= 1e9) return (n / 1e9).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Md';
-  if (a >= 1e6) return (n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' M';
-  if (a >= 1e3) return Math.round(n / 1e3).toLocaleString('fr-FR') + ' k';
-  return Math.round(n).toLocaleString('fr-FR');
+  if (a >= 1e9) return (n / 1e9).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' Md';
+  if (a >= 1e6) return (n / 1e6).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' M';
+  if (a >= 1e3) return Math.round(n / 1e3).toLocaleString(loc()) + ' k';
+  return Math.round(n).toLocaleString(loc());
 };
 function niceMax(v: number) {
   if (v <= 0) return 1;

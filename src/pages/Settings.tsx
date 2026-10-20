@@ -18,8 +18,11 @@ import { ClearDataCard, ToolsTab } from './Tools';
 import { KEEP, deleteCloudBackup, pruneBackups } from '../lib/maintenance';
 import { ConflictsCard, DevicesCard } from './SyncCards';
 import { LicenseCard } from './License';
+import { LangPicker } from '../ui/langPicker';
+import { tr } from '../lib/i18n';
 import { CLOUD_ENABLED } from '../lib/license';
 import { actionsSince, createRestorePoint, restorePoints, restoreToPoint, type RestorePoint } from '../lib/restorePoints';
+import { loc } from '../lib/i18n';
 
 const TABS = [
   { key: 'societe', label: 'Société', perm: 'settings.company' },
@@ -103,6 +106,7 @@ function CompanyTab() {
         <TextField label="WhatsApp du patron (récapitulatif)" value={form.bossPhone ?? ''} onChange={set('bossPhone')} type="tel" placeholder="034 00 000 00" />
         <TextField label="WhatsApp du gérant (récapitulatif du jour)" value={form.managerPhone ?? ''} onChange={set('managerPhone')} type="tel" placeholder="034 00 000 00" />
         <TextField label="E-mail du patron (facultatif)" value={form.bossEmail ?? ''} onChange={set('bossEmail')} type="email" />
+        <TextField label="Indicatif téléphonique du pays" value={form.dialCode ?? ''} onChange={(v) => setForm({ ...form, dialCode: v.replace(/[^\d]/g, '').slice(0, 4) })} inputMode="numeric" placeholder="261" hint="Pour les liens WhatsApp. Ex. 261 Madagascar, 33 France, 221 Sénégal, 225 Côte d’Ivoire." />
       </div>
       <TextField label="Message en bas du ticket de caisse" value={form.ticketFooter ?? ''} onChange={set('ticketFooter')} />
       <SelectField label="Verrouillage automatique après inactivité" value={String(form.autoLockMinutes)} onChange={(v) => setForm({ ...form, autoLockMinutes: Number(v) })}
@@ -144,7 +148,7 @@ function CompanyTab() {
       <div className="stack-s">
         <div className="grid-2">
           <SelectField label="Devise de la boutique" value={form.currency || 'MGA'} onChange={(v) => setForm({ ...form, currency: v, currencySymbol: '' })}
-            options={CURRENCIES.map((x) => ({ value: x.code, label: `${x.name} — ${x.symbol}${x.decimals ? ' (avec centimes)' : ''}` }))} />
+            options={CURRENCIES.map((x) => ({ value: x.code, label: `${tr(x.name)} — ${x.symbol}${x.decimals ? tr(' (avec centimes)') : ''}` }))} />
           <TextField label="Symbole affiché (facultatif)" value={form.currencySymbol ?? ''} onChange={set('currencySymbol')} placeholder={CURRENCIES.find((x) => x.code === (form.currency || 'MGA'))?.symbol} maxLength={6} hint="Laissez vide pour le symbole habituel." />
         </div>
         {(form.currency || 'MGA') !== (c.currency || 'MGA') && <div className="notice"><Icon name="alert" /><span>Changer de devise ne convertit pas les montants déjà saisis (prix, ventes, caisse). À faire de préférence avant de commencer.</span></div>}
@@ -251,6 +255,10 @@ function AppearanceTab() {
   const c = useCompany();
   return (
     <div className="stack">
+      <div className="card stack">
+        <div><h3>Langue</h3><p className="muted small">Langue des écrans, des tickets et des messages. Ce choix ne concerne que cet appareil.</p></div>
+        <LangPicker />
+      </div>
       <div className="card stack">
         <div><h3>Thème</h3><p className="muted small">Automatique suit le réglage clair/sombre du téléphone ou de l'ordinateur. Ce choix ne concerne que cet appareil.</p></div>
         <ThemePicker />
@@ -453,7 +461,7 @@ function BackupTab() {
               try {
                 const why = await cloudCopyBlocker();
                 if (why && !confirm(`Attention : ${why}. La copie risque d’être incomplète. La faire quand même ?`)) { setBusy(''); return; }
-                const st = await cloudBackup('Manuelle'); toast(`Copie enregistrée et vérifiée (${st.total.toLocaleString('fr-FR')} fiches)`);
+                const st = await cloudBackup('Manuelle'); toast(`Copie enregistrée et vérifiée (${st.total.toLocaleString(loc())} fiches)`);
               } catch (e: any) { toast(e.message, 'error'); }
               setBusy('');
             }}>Copier maintenant dans le cloud</Button>
@@ -486,7 +494,7 @@ function BackupTab() {
                   <div className="list-item-main">
                     <p className="list-item-title">{fmtDateTime(b.created_at)}</p>
                     <p className="small muted">{b.label}{b.device ? ` · ${b.device}` : ''}</p>
-                    {copyLooksIncomplete(b.label) && <p className="small"><Badge tone="danger">Copie incomplète</Badge> {labelCount(b.label)?.toLocaleString('fr-FR')} fiches seulement, contre {dataStats().total.toLocaleString('fr-FR')} aujourd’hui : faite par un appareil pas encore synchronisé. Ne pas restaurer.</p>}
+                    {copyLooksIncomplete(b.label) && <p className="small"><Badge tone="danger">Copie incomplète</Badge> {labelCount(b.label)?.toLocaleString(loc())} fiches seulement, contre {dataStats().total.toLocaleString(loc())} aujourd’hui : faite par un appareil pas encore synchronisé. Ne pas restaurer.</p>}
                     {labelCount(b.label) === null && <p className="small muted">Ancienne copie (nombre de fiches non noté) : il s’affiche avant de restaurer.</p>}
                   </div>
                   <Button variant="ghost" onClick={async () => {

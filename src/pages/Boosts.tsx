@@ -16,14 +16,15 @@ import {
 import { Badge, Button, Confirm, Empty, Help, IconButton, Modal, PageHead, SelectField, TextField, navigate, toast, useRoute } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { SortTable, exportTables, type Col } from '../ui/table';
+import { loc } from '../lib/i18n';
 
 const TABS = [
   { key: 'suivi', label: 'Saisie et suivi', perm: 'boosts.view' },
   { key: 'performance', label: 'Performance des boosts', perm: 'boosts.view' },
 ];
-const usd = (n?: number | null, d = 2) => (n == null || !isFinite(n) ? '—' : `${n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })} $`);
-const dd = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-const dayShort = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+const usd = (n?: number | null, d = 2) => (n == null || !isFinite(n) ? '—' : `${n.toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d })} $`);
+const dd = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit' });
+const dayShort = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' });
 const signed = (n?: number) => (n == null ? '—' : n > 0 ? `+${fmtNum(n)}` : fmtNum(n));
 
 export function BoostsPage() {
@@ -298,7 +299,7 @@ function PageTable({ pageId, days }: { pageId: string; days: string[] }) {
               })}
               <tr className="synth-total"><td className="bw-slot"></td><td className="bw-name">Total nouvelles conversations</td>{showVeille && <td className="bw-veille"></td>}{stats.map((s, i) => <td key={i} className={`t-num ${isToday(shownDays[i]) ? 'is-today' : ''}`}>{shownDays[i] > today ? '·' : s.entered ? fmtNum(s.theo) : '—'}</td>)}<td className="t-num">{fmtNum(stats[shownDays.indexOf(last)]?.theo ?? 0)}</td><td className="t-num">{fmtNum(msgW)}</td>{edit && <td></td>}</tr>
               <tr className="bw-entry"><td className="bw-slot"></td><td className="bw-name">Compte saisi le <span className="small muted">(heure, par)</span></td>{showVeille && <td className="bw-veille"></td>}{shownDays.map((d) => { const e = lastEntry(pageId, d); const miss = d <= today ? missingBoosts(pageId, d).length : 0; const late = miss > 0 && new Date() > boostDeadline(d);
-                return <td key={d} className={`small ${isToday(d) ? 'is-today' : ''}`}>{e ? <span title={new Date(e.at).toLocaleString('fr-FR')}>{new Date(e.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{e.by ? <><br /><span className="muted">{e.by}</span></> : null}</span> : d > today ? '·' : null}{miss > 0 && <div className={late ? 'neg' : 'muted'}>{late ? 'en retard' : `avant ${deadlineText(d)}`}</div>}</td>; })}<td></td><td></td>{edit && <td></td>}</tr>
+                return <td key={d} className={`small ${isToday(d) ? 'is-today' : ''}`}>{e ? <span title={new Date(e.at).toLocaleString(loc())}>{new Date(e.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{e.by ? <><br /><span className="muted">{e.by}</span></> : null}</span> : d > today ? '·' : null}{miss > 0 && <div className={late ? 'neg' : 'muted'}>{late ? 'en retard' : `avant ${deadlineText(d)}`}</div>}</td>; })}<td></td><td></td>{edit && <td></td>}</tr>
               <tr><td className="bw-slot"></td><td className="bw-name">Messages réels comptés <span className="small muted">(facultatif)</span></td>{showVeille && <td className="bw-veille"></td>}{shownDays.map((d, i) => <td key={d} className={`bw-day ${isToday(d) ? 'is-today' : ''}`}>{d > today ? <span className="muted">·</span> : edit ? <CellInput label={`Messages réels ${dd(d)}`} value={stats[i].real} onCommit={(v) => saveReal(pageId, d, v)} /> : <span className="num">{stats[i].real ?? '—'}</span>}</td>)}<td className="t-num">{stats[shownDays.indexOf(last)]?.real ?? '—'}</td><td className="t-num">{realW || '—'}</td>{edit && <td></td>}</tr>
               <tr><td className="bw-slot"></td><td className="bw-name">Commandes en ligne</td>{showVeille && <td className="bw-veille"></td>}{stats.map((s, i) => <td key={i} className="t-num">{shownDays[i] > today ? '·' : fmtNum(s.orders)}</td>)}<td className="t-num">{fmtNum(stats[shownDays.indexOf(last)]?.orders ?? 0)}</td><td className="t-num">{fmtNum(ordersW)}</td>{edit && <td></td>}</tr>
               <tr className="synth-total"><td className="bw-slot"></td><td className="bw-name">Chiffre d’affaires</td>{showVeille && <td className="bw-veille"></td>}{shownDays.map((d) => <td key={d} className="t-num small">{d > today ? '·' : fmtAr(rev.get(d) ?? 0)}</td>)}<td className="t-num small">{fmtAr(rev.get(last) ?? 0)}</td><td className="t-num">{fmtAr(revW)}</td>{edit && <td></td>}</tr>

@@ -15,6 +15,7 @@ import type { Category } from './catalog';
 import { addDays, dayOf } from './money';
 import { isWalkIn, type Order } from './orders';
 import { variantPage } from './scope';
+import { loc } from './i18n';
 
 export interface Boost extends BaseRecord {
   pageId: string;           // catégorie principale = page Facebook
@@ -123,8 +124,8 @@ export const prevReading = (boostId: string, date: string) => readingsOf(boostId
 export const nextReading = (boostId: string, date: string) => readingsOf(boostId).find((r) => r.date > date);
 export const realOn = (pageId: string, date: string) => get<PageMessages>('pageMessages', pageMsgId(pageId, date));
 
-const fmtD = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-const n2 = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+const fmtD = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit' });
+const n2 = (n: number) => n.toLocaleString(loc(), { maximumFractionDigits: 2 });
 
 /**
  * Contrôle d'une saisie : les valeurs cumulées ne baissent jamais.
@@ -361,6 +362,6 @@ export async function logMissedBoosts(now = new Date()) {
     const id = `audit_boostmiss_${d.pageId}_${d.date}`;
     if (get('audit', id)) continue;
     const owners = boostOwners(d.pageId).map((u) => u.fullName).join(', ') || 'personne n’est désigné';
-    await save('audit', { id, at: now.toISOString(), action: 'Compte boost non fait', details: `${pageName(d.pageId)}, ${new Date(`${d.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit' })} : ${d.missing} boost(s) sans saisie à ${deadlineText(d.date)} — à faire par : ${owners}`, entity: 'boosts', entityId: d.pageId, level: 'medium', userId: null, userName: 'Contrôle automatique' });
+    await save('audit', { id, at: now.toISOString(), action: 'Compte boost non fait', details: `${pageName(d.pageId)}, ${new Date(`${d.date}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit' })} : ${d.missing} boost(s) sans saisie à ${deadlineText(d.date)} — à faire par : ${owners}`, entity: 'boosts', entityId: d.pageId, level: 'medium', userId: null, userName: 'Contrôle automatique' });
   }
 }

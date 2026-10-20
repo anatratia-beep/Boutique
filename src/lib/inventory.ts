@@ -11,6 +11,7 @@ import { normHeader, writeXlsx, type Sheet } from './xlsx';
 import { netMoves } from './corrections';
 import { pointBefore } from './restorePoints';
 import type { Order } from './orders';
+import { loc } from './i18n';
 
 export interface InventoryLine { variantId: string; sku: string; name: string; pageId: string; theo: number; counted: number; delta: number; unitCost: number }
 export interface Inventory extends BaseRecord {
@@ -118,7 +119,7 @@ export async function countSheet(variantIds: string[], withTheo: boolean) {
   return writeXlsx([{
     name: 'Inventaire', columns: [...COLS, ...(withTheo ? [{ header: 'Stock théorique', width: 14, number: true }] : [])],
     rows: variantIds.map((id) => rowOf(id, '', withTheo ? [stockOf(id)] : [])),
-  }, { name: "Mode d'emploi", columns: [], rows: [], notes: ['#Feuille de comptage — inventaire', 'Remplissez la colonne « Stock » avec la quantité comptée. Laissez vide ce qui n’a pas été compté.', 'Puis, dans Trésor en ligne : Stock → Inventaire → « Importer le comptage (Excel) ».', 'Ne changez pas le « Code variante » : c’est lui qui retrouve l’article.'] }]);
+  }, { name: "Mode d'emploi", columns: [], rows: [], notes: ['#Feuille de comptage — inventaire', 'Remplissez la colonne « Stock » avec la quantité comptée. Laissez vide ce qui n’a pas été compté.', 'Puis, dans Trésor en ligne : Stock → Inventaire → « Importer le comptage (Excel) ».', 'Ne changez pas le « Code variante » : c’est lui qui retrouve l’article.'] }], { translate: false });
 }
 
 /** Export d'un inventaire validé : même colonnes que l'import articles et stock (Stock = compté), plus le détail. */
@@ -127,10 +128,10 @@ export async function inventoryWorkbook(inv: Inventory) {
     name: inv.number, columns: [...COLS, { header: 'Stock théorique', width: 14, number: true }, { header: 'Écart', width: 9, number: true }, { header: `Coût unitaire (${curSym()})`, width: 14, number: true }, { header: `Valeur écart (${curSym()})`, width: 15, number: true }],
     rows: inv.lines.map((l) => rowOf(l.variantId, l.counted, [l.theo, l.delta, roundMoney(l.unitCost), roundMoney(l.delta * l.unitCost)])),
   }, { name: 'Informations', columns: [], rows: [], notes: [
-    `#${inv.number} — inventaire du ${new Date(inv.at).toLocaleString('fr-FR')}`, `Fait par : ${inv.byName ?? '?'}`, `Lignes comptées : ${inv.counted} · écarts : ${inv.gaps} · pièces : ${inv.pcsGap} · valeur : ${fmtMoney(inv.valueGap)}`,
-    inv.status === 'cancelled' ? `ANNULÉ le ${new Date(inv.cancelledAt!).toLocaleString('fr-FR')} par ${inv.cancelledBy} : ${inv.cancelReason}` : 'Validé.',
+    `#${inv.number} — inventaire du ${new Date(inv.at).toLocaleString(loc())}`, `Fait par : ${inv.byName ?? '?'}`, `Lignes comptées : ${inv.counted} · écarts : ${inv.gaps} · pièces : ${inv.pcsGap} · valeur : ${fmtMoney(inv.valueGap)}`,
+    inv.status === 'cancelled' ? `ANNULÉ le ${new Date(inv.cancelledAt!).toLocaleString(loc())} par ${inv.cancelledBy} : ${inv.cancelReason}` : 'Validé.',
     'La colonne « Stock » est la quantité comptée : ce fichier peut être réimporté (Stock → Inventaire → Importer) pour refaire le même comptage.',
-  ] }]);
+  ] }], { translate: false });
 }
 
 /** Lit un fichier de comptage : « Code variante » (ou « Code article ») + « Stock » (ou « Compté »). */

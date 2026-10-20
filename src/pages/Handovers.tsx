@@ -14,8 +14,9 @@ import { printA4, a4Table, arA4, h } from '../lib/a4';
 import { Badge, Button, Confirm, Empty, Help, IconButton, Modal, PageHead, TextField, fmtDate, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { exportTables, type Col } from '../ui/table';
+import { loc } from '../lib/i18n';
 
-const longDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const longDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const money = (n: number) => (n ? fmtAr(n) : <span className="muted">—</span>);
 
 export function HandoversPage() {
@@ -157,7 +158,7 @@ function Sheet({ d, self, onDone }: { d: SellerDay; self?: boolean; onDone?: () 
 
       {ho ? (
         <div className="card stack-s">
-          <p><Badge tone={ho.gap ? 'warn' : 'ok'}>Reçu</Badge> <strong>{fmtAr(ho.amount)}</strong> remis à {ho.byName ?? '?'} le {new Date(ho.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          <p><Badge tone={ho.gap ? 'warn' : 'ok'}>Reçu</Badge> <strong>{fmtAr(ho.amount)}</strong> remis à {ho.byName ?? '?'} le {new Date(ho.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
             {ho.gap ? <span className={ho.gap < 0 ? 'neg' : 'pos'}> · écart {ho.gap > 0 ? '+' : ''}{fmtAr(ho.gap)}</span> : null}</p>
           {ho.note && <p className="small muted">Note : {ho.note}</p>}
           {changedSince(d) && <div className="notice notice-danger"><Icon name="alert" /><span>Les chiffres ont changé depuis la validation (à payer : {fmtAr(ho.expected)} → {fmtAr(d.toPay)}). Vérifiez avec le vendeur ; au besoin, annulez puis validez à nouveau.</span></div>}

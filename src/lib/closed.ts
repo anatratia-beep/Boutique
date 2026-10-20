@@ -1,6 +1,7 @@
 // Semaines clôturées par un versement au patron : on ne peut plus y ajouter ni y supprimer de dépense ou de vente
 // sur place (le montant versé ne doit plus changer après coup).
 import { all, bizNow, type BaseRecord } from './db';
+import { loc } from './i18n';
 
 export interface Payout extends BaseRecord {
   weekStart: string;       // lundi (AAAA-MM-JJ)
@@ -37,4 +38,4 @@ const localDay = (iso: string) => { const d = new Date(iso); return `${d.getFull
 /** Refuse une opération datée d'aujourd'hui (date de travail) si la semaine est déjà versée. */
 export const assertOpenNow = (what: string) => assertOpen(localDay(bizNow()), what);
 export const assertOpenAt = (iso: string, what: string) => assertOpen(localDay(iso), what);
-const fr = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const fr = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric' });

@@ -17,6 +17,7 @@ import { twinFinder } from '../lib/duplicates';
 import { pointBefore } from '../lib/restorePoints';
 import type { Category } from '../lib/catalog';
 import { ImportBadges, MappedImport, TwinNotice, looksLikePageFile, headerRowOf, sortRows } from './ImportMapped';
+import { loc } from '../lib/i18n';
 
 /** Import du fichier d'une page : contrôle de chaque ligne, puis création / mise à jour des articles. */
 function PageImport({ cat, sheets, onDone }: { cat: Category; sheets: Sheet[]; onDone: () => void }) {
@@ -111,7 +112,7 @@ const TEMPLATES = [
         'Les 2 lignes d’exemple peuvent être effacées. Ne changez pas les titres des colonnes.',
         'Pour ajouter les photos : insérez l’image dans la ligne de l’article (n’importe quelle colonne), elle sera reprise.',
       ] },
-    ]),
+    ], { translate: false }),
   },
   {
     key: 'commande', title: 'Commande Chine', text: 'Le même format que vos fichiers de commande : référence, n° de commande, taille, quantités, prix en RMB, prix de vente.',
@@ -132,17 +133,17 @@ const TEMPLATES = [
         'Le taux du RMB et les tarifs du transit ne sont pas dans ce fichier : ils se saisissent dans Trésor en ligne (taux à l’import, transit à la réception).',
         'Vos anciens fichiers (avec PRIX DE REVIENT, Volume m3, Frais transit…) sont aussi acceptés tels quels.',
       ] },
-    ]),
+    ], { translate: false }),
   },
   {
     key: 'fournisseurs', title: 'Fournisseurs', text: 'Nom, boutique 1688, contact WeChat ou téléphone, ville.',
     build: () => writeXlsx([{ name: 'Fournisseurs', columns: [{ header: 'Nom', width: 26, input: true }, { header: 'Boutique / lien', width: 34, input: true }, { header: 'Contact', width: 20, input: true }, { header: 'Ville', width: 14, input: true }, { header: 'Notes', width: 30, input: true }],
-      rows: [['Usine pyjamas Guangzhou', 'shop566869krq2495.1688.com', 'WeChat : xxxx', 'Guangzhou', '']] }]),
+      rows: [['Usine pyjamas Guangzhou', 'shop566869krq2495.1688.com', 'WeChat : xxxx', 'Guangzhou', '']] }], { translate: false }),
   },
   {
     key: 'categories', title: 'Catégories', text: 'La liste de vos catégories, avec une catégorie parente si besoin (ex. Enfant › Boxer garçon).',
     build: () => writeXlsx([{ name: 'Catégories', columns: [{ header: 'Catégorie', width: 26, input: true }, { header: 'Catégorie parente', width: 26, input: true }],
-      rows: [['Enfant', ''], ['Boxer garçon', 'Enfant'], ['Boxer homme', '']] }]),
+      rows: [['Enfant', ''], ['Boxer garçon', 'Enfant'], ['Boxer homme', '']] }], { translate: false }),
   },
 ];
 
@@ -201,7 +202,7 @@ export function ImportPage() {
         {error && <div className="notice notice-danger"><Icon name="alert" /><span>{error}</span></div>}
         {repairNote && <div className="notice notice-warn"><Icon name="alert" /><span>{repairNote}</span></div>}
         {already && sheets && <div className="notice notice-warn"><Icon name="alert" /><span>
-          <strong>Ce fichier a déjà été importé</strong> le {new Date(already.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}{already.byName ? ` par ${already.byName}` : ''}{already.name !== file?.name ? ` (sous le nom « ${already.name} »)` : ''}.
+          <strong>Ce fichier a déjà été importé</strong> le {new Date(already.at).toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' })}{already.byName ? ` par ${already.byName}` : ''}{already.name !== file?.name ? ` (sous le nom « ${already.name} »)` : ''}.
           {kind === 'commande' ? ' L’importer de nouveau créerait une deuxième commande.' : ' Les articles déjà enregistrés à l’identique seront ignorés : seuls les changements seront enregistrés.'}
           {kind === 'commande' && <label className="row small" style={{ gap: 6, marginTop: 6 }}><input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} /> C’est une autre commande : l’importer quand même</label>}
         </span></div>}

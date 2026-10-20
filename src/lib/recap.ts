@@ -6,14 +6,15 @@ import { ACCOUNTS, allAccountIds, MOVE_TYPES, addDays, report, type AccountId, t
 import type { Company } from './settings';
 import type { Block, PrintDoc } from './print/doc';
 import { daySynthesis, type Synthesis } from './synthesis';
+import { loc } from './i18n';
 
 export interface Line { label: string; value: string; strong?: boolean; sub?: boolean }
 export interface Section { title: string; lines: Line[] }
 
 /** Comptes hors espèces (mobile money, carte, virement…) : suit la liste des moyens de paiement. */
 const MM = (): AccountId[] => allNonCashIds();
-export const longDate = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const shortDay = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+export const longDate = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const shortDay = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' });
 const neg = (n: number) => (n ? '− ' + fmtAr(n) : fmtAr(0));
 const sum = (r: Record<AccountId, number>, ids: AccountId[]) => ids.reduce((t, a) => t + (r[a] || 0), 0);
 
@@ -127,7 +128,7 @@ function toText(head: string[], sections: Section[]) {
 export function dayText(r: Report, company: Company, withProfit: boolean) {
   const s = daySynthesis(r.from);
   const head = [`*${company.name} — Récapitulatif du ${longDate(r.from)}*`];
-  if (s.corrected) head.push(`_Récapitulatif corrigé après les retours constatés (mise à jour du ${new Date(s.lastUpdate!).toLocaleDateString('fr-FR')})_`);
+  if (s.corrected) head.push(`_Récapitulatif corrigé après les retours constatés (mise à jour du ${new Date(s.lastUpdate!).toLocaleDateString(loc())})_`);
   else if (s.deliv.pending) head.push(`_Provisoire : ${s.deliv.pending} livraison(s) pas encore confirmée(s) au versement_`);
   return toText(head, daySections(r, withProfit));
 }

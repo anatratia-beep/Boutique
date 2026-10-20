@@ -17,6 +17,7 @@ import { Thumb } from './Products';
 import { ORDER_STATUS, orderLabel, reportCount, reservingOrders } from '../lib/orders';
 import { printA4, a4Table, arA4, h } from '../lib/a4';
 import { exportTables } from '../ui/table';
+import { loc } from '../lib/i18n';
 
 const pageName = (id: string) => (id ? get<Category>('categories', id)?.name ?? 'Page supprimée' : 'Sans page');
 
@@ -154,7 +155,7 @@ function History() {
   const title = `Historique des inventaires${page ? ` — ${pageName(page)}` : ''}`;
   const exportXls = () => exportTables(`historique-inventaires.xlsx`, [
     { name: 'Inventaires', cols: [
-      { key: 'n', label: 'N°', value: (i: Inventory) => i.number, width: 12 }, { key: 'd', label: 'Date et heure', value: (i: Inventory) => new Date(i.at).toLocaleString('fr-FR'), width: 20 },
+      { key: 'n', label: 'N°', value: (i: Inventory) => i.number, width: 12 }, { key: 'd', label: 'Date et heure', value: (i: Inventory) => new Date(i.at).toLocaleString(loc()), width: 20 },
       { key: 'b', label: 'Par', value: (i: Inventory) => i.byName ?? '', width: 18 }, { key: 'p', label: 'Pages', value: pagesOf, width: 30 },
       { key: 'l', label: 'Lignes comptées', value: (i: Inventory) => sum(i).n, width: 12 }, { key: 'g', label: 'Écarts', value: (i: Inventory) => sum(i).g, width: 9 },
       { key: 'pc', label: 'Pièces', value: (i: Inventory) => sum(i).pcs, width: 9 }, ...(showCost ? [{ key: 'v', label: `Valeur (${curSym()})`, value: (i: Inventory) => roundMoney(sum(i).val), money: true, width: 14 }] : []),
@@ -165,11 +166,11 @@ function History() {
       { key: 'sku', label: 'Code variante', value: (r: any) => r.sku, width: 22 }, { key: 'a', label: 'Article', value: (r: any) => r.name, width: 30 },
       { key: 't', label: 'Théorique', value: (r: any) => r.theo, width: 10 }, { key: 'c', label: 'Stock', value: (r: any) => r.counted, width: 9 }, { key: 'e', label: 'Écart', value: (r: any) => r.delta, width: 9 },
       ...(showCost ? [{ key: 'v', label: `Valeur écart (${curSym()})`, value: (r: any) => roundMoney(r.delta * r.unitCost), money: true, width: 14 }] : []),
-    ], rows: list.flatMap((i) => linesOf(i).map((l) => ({ ...l, inv: i.number, date: new Date(i.at).toLocaleString('fr-FR') }))) },
+    ], rows: list.flatMap((i) => linesOf(i).map((l) => ({ ...l, inv: i.number, date: new Date(i.at).toLocaleString(loc()) }))) },
   ]);
-  const exportPdf = () => printA4(title, `Du ${period.from ? new Date(`${period.from}T12:00:00`).toLocaleDateString('fr-FR') : 'début'} au ${period.to ? new Date(`${period.to}T12:00:00`).toLocaleDateString('fr-FR') : 'aujourd’hui'}`,
+  const exportPdf = () => printA4(title, `Du ${period.from ? new Date(`${period.from}T12:00:00`).toLocaleDateString(loc()) : 'début'} au ${period.to ? new Date(`${period.to}T12:00:00`).toLocaleDateString(loc()) : 'aujourd’hui'}`,
     a4Table({ head: ['N°', 'Date et heure', 'Par', 'Pages', 'Lignes', 'Écarts', 'Pièces', ...(showCost ? ['Valeur'] : []), 'État'], num: showCost ? [4, 5, 6, 7] : [4, 5, 6],
-      rows: list.map((i) => { const x = sum(i); return [h(i.number), h(new Date(i.at).toLocaleString('fr-FR')), h(i.byName ?? ''), h(pagesOf(i)), String(x.n), String(x.g), String(x.pcs), ...(showCost ? [arA4(x.val)] : []), i.status === 'cancelled' ? 'Annulé' : 'Validé']; }) }));
+      rows: list.map((i) => { const x = sum(i); return [h(i.number), h(new Date(i.at).toLocaleString(loc())), h(i.byName ?? ''), h(pagesOf(i)), String(x.n), String(x.g), String(x.pcs), ...(showCost ? [arA4(x.val)] : []), i.status === 'cancelled' ? 'Annulé' : 'Validé']; }) }));
   return (
     <>
       <div className="card stack">
@@ -219,7 +220,7 @@ function InventoryDetail({ inv, onClose }: { inv: Inventory; onClose: () => void
   return (
     <Modal title={`Inventaire ${inv.number}`} wide onClose={onClose} footer={<>
       {inv.status === 'done' && can('records.correct') && <Button variant="danger" icon="x" onClick={() => setCancel(true)}>Annuler cet inventaire</Button>}
-      <Button variant="ghost" icon="printer" onClick={() => printA4(`Inventaire ${inv.number}`, `${new Date(inv.at).toLocaleString('fr-FR')} · par ${inv.byName ?? '?'}${inv.status === 'cancelled' ? ' · ANNULÉ' : ''}`,
+      <Button variant="ghost" icon="printer" onClick={() => printA4(`Inventaire ${inv.number}`, `${new Date(inv.at).toLocaleString(loc())} · par ${inv.byName ?? '?'}${inv.status === 'cancelled' ? ' · ANNULÉ' : ''}`,
         `<div class="kpis"><div class="kpi"><span>Lignes comptées</span><b>${inv.counted}</b></div><div class="kpi"><span>Écarts</span><b>${inv.gaps}</b></div><div class="kpi"><span>Pièces</span><b>${inv.pcsGap}</b></div>${showCost ? `<div class="kpi strong"><span>Valeur</span><b>${arA4(inv.valueGap)}</b></div>` : ''}</div>`
         + a4Table({ head: ['Article', 'Code', 'Page', 'Théorique', 'Compté', 'Écart', ...(showCost ? ['Valeur'] : [])], num: showCost ? [3, 4, 5, 6] : [3, 4, 5], rows: lines.map((l) => [h(l.name), h(l.sku), h(pageName(l.pageId)), String(l.theo), String(l.counted), l.delta ? (l.delta > 0 ? '+' : '') + l.delta : '—', ...(showCost ? [l.delta ? arA4(l.delta * l.unitCost) : '—'] : [])]) }))}>PDF A4</Button>
       <Button variant="ghost" icon="download" onClick={async () => downloadBlob(await inventoryWorkbook(inv), `${inv.number}.xlsx`)}>Exporter (Excel)</Button>

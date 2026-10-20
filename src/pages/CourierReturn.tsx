@@ -19,6 +19,7 @@ import { PeriodPicker, defaultPeriod, inPeriod, type Period } from '../ui/period
 import { Icon } from '../ui/icons';
 import { PostponeModal, ReturnModal } from './Orders';
 import { useMyScope } from '../lib/scope';
+import { loc } from '../lib/i18n';
 
 type Decision = 'delivered' | 'refused';
 type FeeMode = 'retenue' | 'apart' | 'plustard';
@@ -146,7 +147,7 @@ function CourierSheet({ courier, canSettle, only }: { courier: Courier; canSettl
       await settleCourier(courier, on.map((r) => r.o.id), n, account, [note.trim(), label].filter(Boolean).join(' · '), at);
       if (payFees > 0) await settleCourier(courier, [], -payFees, feeAccount, 'Frais de livraison payés au livreur', at);
       for (const r of on) if (r.fee > 0) await save('orders', { id: r.o.id, feeStatus: mode === 'retenue' ? 'kept' : mode === 'apart' ? 'paid' : 'deferred', ...(mode === 'apart' ? { feePaidAt: at, feePaidHow: ACCOUNTS[feeAccount] } : {}) });
-      toast(`Retour de ${courier.name} enregistré${day !== todayYmd ? ` au ${new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR')}` : ''}`);
+      toast(`Retour de ${courier.name} enregistré${day !== todayYmd ? ` au ${new Date(`${day}T12:00:00`).toLocaleDateString(loc())}` : ''}`);
       setDec({}); setFees({}); setOff({}); setAmount(null); setNote(''); setRetDay(null);
     } catch (e: any) { toast(e?.message ?? String(e), 'error'); }
     setBusy(false);
@@ -219,8 +220,8 @@ function CourierSheet({ courier, canSettle, only }: { courier: Courier; canSettl
           <h2>Compte avec {courier.name} ({on.length} colis)</h2>
           <div className="stack-s">
             <TextField label="Date réelle du retour du livreur" type="date" required value={day} onChange={(v) => setRetDay(v || null)}
-              hint={day === todayYmd ? 'Aujourd’hui.' : `Le retour, l’argent et le compte de ${courier.name} seront enregistrés au ${new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })} (jour de départ des colis), même si vous validez aujourd’hui.`} />
-            {days.length > 1 && <div className="notice notice-warn"><Icon name="alert" /><span>Les colis cochés sont partis à des dates différentes ({days.map((d) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })).join(', ')}). Pour que chaque compte reste à sa date, réglez-les jour par jour : choisissez le jour dans « Période » en haut.</span></div>}
+              hint={day === todayYmd ? 'Aujourd’hui.' : `Le retour, l’argent et le compte de ${courier.name} seront enregistrés au ${new Date(`${day}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })} (jour de départ des colis), même si vous validez aujourd’hui.`} />
+            {days.length > 1 && <div className="notice notice-warn"><Icon name="alert" /><span>Les colis cochés sont partis à des dates différentes ({days.map((d) => new Date(`${d}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit' })).join(', ')}). Pour que chaque compte reste à sa date, réglez-les jour par jour : choisissez le jour dans « Période » en haut.</span></div>}
             {dayError && <div className="notice notice-danger"><Icon name="alert" /><span>{dayError}</span></div>}
           </div>
           <div className="money-lines">
@@ -251,7 +252,7 @@ function CourierSheet({ courier, canSettle, only }: { courier: Courier; canSettl
       )}
       {payOwed && <PayOwedModal courier={courier} amount={-b.carry} onClose={() => setPayOwed(null)} />}
       {ask && <Confirm title={`Valider le retour de ${courier.name} ?`} confirmLabel="Valider" onClose={() => setAsk(false)} onConfirm={validate}
-        message={<div className="stack-s"><p><strong>Date du retour : {new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</strong></p><p>{on.length} colis seront enregistrés et réglés : {on.filter((r) => r.open).map((r) => `${r.o.number} ${r.d === 'delivered' ? 'livrée' : 'refusée'}`).join(', ') || 'déjà saisis'}.</p>
+        message={<div className="stack-s"><p><strong>Date du retour : {new Date(`${day}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</strong></p><p>{on.length} colis seront enregistrés et réglés : {on.filter((r) => r.open).map((r) => `${r.o.number} ${r.d === 'delivered' ? 'livrée' : 'refusée'}`).join(', ') || 'déjà saisis'}.</p>
           <table className="kv-table"><tbody>
             <tr><td>a. Articles</td><td>{fmtAr(tot.a)}</td></tr><tr><td>b. Frais de livraison</td><td>{fmtAr(tot.b)}</td></tr>
             <tr><td>c. Payé par les clients</td><td>{fmtAr(tot.c)}</td></tr><tr><td>d. Déjà payé à la boutique</td><td>{fmtAr(tot.d)}</td></tr>

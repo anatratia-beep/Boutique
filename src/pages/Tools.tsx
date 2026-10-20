@@ -7,6 +7,7 @@ import { audit } from '../lib/auth';
 import { DATA_GROUPS, KEPT_LABEL, checkData, clearData, exportAllExcel, optimizePhotos, photoStats, tableCounts, type Issue } from '../lib/maintenance';
 import { Help, Badge, Button, Confirm, TextField, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { loc } from '../lib/i18n';
 
 const TABLE_LABELS: Record<string, string> = {
   users: 'Utilisateurs', roles: 'Rôles', settings: 'Paramètres', audit: 'Journal', categories: 'Catégories', products: 'Articles', variants: 'Variantes', stockMoves: 'Mouvements de stock',
@@ -26,7 +27,7 @@ export function ToolsTab() {
   const run = () => setIssues(checkData());
   useEffect(() => { if (issues) run(); }, [o, v, m, p]);
   const problems = issues?.filter((i) => i.level !== 'ok').length ?? 0;
-  const mb = (n: number) => (n / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo';
+  const mb = (n: number) => (n / 1048576).toLocaleString(loc(), { maximumFractionDigits: 1 }) + ' Mo';
   return (
     <div className="stack">
       <WorkDateCard />
@@ -35,7 +36,7 @@ export function ToolsTab() {
           <div><h3>Vérifier les données</h3><Help>Recalcule le stock à partir de tous les mouvements et cherche les incohérences (stock négatif, commandes sans livreur, trop-perçus…). Rien n’est modifié sans votre accord.</Help></div>
           <Button icon="search" onClick={run}>{issues ? 'Vérifier à nouveau' : 'Lancer la vérification'}</Button>
         </div>
-        {issues && <p><Badge tone={problems ? 'warn' : 'ok'}>{problems ? `${problems} point(s) à regarder` : 'Tout est en ordre'}</Badge> <span className="small muted">Stock recalculé à partir de {m.length.toLocaleString('fr-FR')} mouvement(s).</span></p>}
+        {issues && <p><Badge tone={problems ? 'warn' : 'ok'}>{problems ? `${problems} point(s) à regarder` : 'Tout est en ordre'}</Badge> <span className="small muted">Stock recalculé à partir de {m.length.toLocaleString(loc())} mouvement(s).</span></p>}
         {issues && (
           <ul className="list">
             {issues.map((i) => (
@@ -66,7 +67,7 @@ export function ToolsTab() {
         <h3>Données sur cet appareil</h3>
         {usage && <p className="small">Espace utilisé : <strong>{mb(usage.used)}</strong>{usage.quota ? ` sur ${mb(usage.quota)} disponibles` : ''}.</p>}
         <div className="table-wrap"><table className="kv-table"><tbody>
-          {counts.filter((c) => c.n).map((c) => <tr key={c.t}><td>{TABLE_LABELS[c.t] ?? c.t}</td><td>{c.n.toLocaleString('fr-FR')}</td></tr>)}
+          {counts.filter((c) => c.n).map((c) => <tr key={c.t}><td>{TABLE_LABELS[c.t] ?? c.t}</td><td>{c.n.toLocaleString(loc())}</td></tr>)}
         </tbody></table></div>
       </div>
     </div>
@@ -98,13 +99,13 @@ export function ClearDataCard() {
       <div><Button variant="danger" icon="trash" disabled={!sel.length} onClick={() => setOpen(true)}>Effacer la sélection</Button></div>
       {open && <Confirm title="Effacer les données sélectionnées ?" danger confirmLabel="Effacer" typeToConfirm="EFFACER" onClose={() => setOpen(false)}
         message={<div className="stack-s"><p>Seront effacés : <strong>{DATA_GROUPS.filter((g) => sel.includes(g.key)).map((g) => g.label).join(' ; ')}</strong>.</p><p className="small muted">Un fichier de sauvegarde va être téléchargé avant l’effacement.</p></div>}
-        onConfirm={async () => { const n = await clearData(sel); toast(`${n.toLocaleString('fr-FR')} enregistrement(s) effacé(s)`); }} />}
+        onConfirm={async () => { const n = await clearData(sel); toast(`${n.toLocaleString(loc())} enregistrement(s) effacé(s)`); }} />}
     </div>
   );
 }
 
 const realToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-const longDay = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const longDay = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
 /** Date de saisie commune à tous les appareils (enregistrée dans les paramètres synchronisés). */
 async function setWorkDate(d: string | null) {
@@ -132,7 +133,7 @@ function WorkDateCard() {
       </div>
       {ask && <Confirm title="Changer la date de saisie de tous les appareils ?" danger confirmLabel="Appliquer à tous" onClose={() => setAsk(false)} onConfirm={() => setWorkDate(d)}
         message={<p>À partir de maintenant, <strong>tous les utilisateurs</strong> enregistreront leurs ventes, livraisons, dépenses et mouvements de stock à la date du <strong>{d ? longDay(d) : ''}</strong>, jusqu’à ce que vous reveniez à aujourd’hui. À n’utiliser que pour des essais ou pour rattraper un cahier.</p>} />}
-      {active && <p><Badge tone="warn">En cours : saisies datées du {longDay(active)}</Badge>{rec?.byName ? <span className="small muted"> — fixée par {rec.byName}{rec.at ? ` le ${new Date(rec.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</span> : null}</p>}
+      {active && <p><Badge tone="warn">En cours : saisies datées du {longDay(active)}</Badge>{rec?.byName ? <span className="small muted"> — fixée par {rec.byName}{rec.at ? ` le ${new Date(rec.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</span> : null}</p>}
     </div>
   );
 }
@@ -156,7 +157,7 @@ function PhotosCard() {
   useTable('products'); useTable('variants'); useTable('cashMoves'); useTable('categories');
   const st = photoStats();
   const [prog, setProg] = useState('');
-  const ko = (b: number) => Math.round(b / 1024).toLocaleString('fr-FR') + ' Ko';
+  const ko = (b: number) => Math.round(b / 1024).toLocaleString(loc()) + ' Ko';
   return (
     <div className="card stack">
       <div><h3>Photos et logos</h3>

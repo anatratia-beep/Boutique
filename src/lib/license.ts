@@ -6,6 +6,7 @@
 //    boutique se synchronisent entre ses appareils.
 // La clé est vérifiée avec la clé publique du vendeur : impossible de fabriquer une clé sans sa clé secrète.
 import { cloudSession, connectCloud, disconnectCloud } from './sync';
+import { loc } from './i18n';
 
 /** Clé publique du vendeur (ECDSA P-256). La clé secrète correspondante n'est JAMAIS dans ce dépôt. */
 const VENDOR_PUBLIC_KEY: JsonWebKey = {
@@ -235,4 +236,4 @@ export async function licenseHeartbeat(): Promise<'ok' | 'revoked' | 'skip'> {
 /** Nombre de comptes actifs autorisés (0 = illimité). */
 export const userLimit = () => (current?.version === 2 ? current.users : 0);
 
-export const frDate = (iso: string) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+export const frDate = (iso: string) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString(loc(), { day: 'numeric', month: 'long', year: 'numeric' }) : '');

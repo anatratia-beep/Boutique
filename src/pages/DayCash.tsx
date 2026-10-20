@@ -11,16 +11,17 @@ import { compressPhoto } from '../lib/images';
 import { addDays, addMove, atFor, deleteMove, today, type FinanceCategory } from '../lib/money';
 import { catName, dayRecap, dayRecapText, dayReview } from '../lib/payouts';
 import { closedBy } from '../lib/closed';
-import { fmtPhone, normPhone } from '../lib/orders';
+import { fmtPhone, normPhone, waNumber } from '../lib/orders';
+import { trLines } from '../lib/i18n';
 import { useCompany } from '../lib/settings';
 import { useMyScope } from '../lib/scope';
 import { Help, Badge, Button, Confirm, Empty, IconButton, PageHead, SelectField, TextField, fmtDate, toast, useRoute } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import type { CashMove } from '../lib/money';
+import { loc } from '../lib/i18n';
 
 const wa = (phone: string | undefined, text: string) => {
-  const p = normPhone(phone || '');
-  return `https://wa.me/${p ? '261' + p.replace(/^0/, '') : ''}?text=${encodeURIComponent(text)}`;
+  return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`;
 };
 
 export function DayCashPage() {
@@ -41,8 +42,8 @@ export function DayCashPage() {
   const r = dayRecap(date, only);
   // Dépenses : seulement le gérant / l'admin (droit « Saisir les dépenses ») ; le vendeur ne voit que les ventes.
   const canExp = can('expenses.manage');
-  const text = dayRecapText(date, company.name, user?.fullName, only, canExp);
-  const longDate = new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const text = trLines(dayRecapText(date, company.name, user?.fullName, only, canExp));
+  const longDate = new Date(`${date}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <>
@@ -120,7 +121,7 @@ function Expenses({ date, moves, total, mine: onlyMine }: { date: string; moves:
           return (
             <li key={m.id} className="list-item">
               <div className="list-item-main"><span className="list-item-title">{m.label || catName(m.categoryId) || 'Dépense'}</span>
-                <p className="small muted">{catName(m.categoryId)}{m.userName ? ` · ${m.userName}` : ''} · {new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{m.photo ? ' · reçu joint' : ''}</p></div>
+                <p className="small muted">{catName(m.categoryId)}{m.userName ? ` · ${m.userName}` : ''} · {new Date(m.at).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' })}{m.photo ? ' · reçu joint' : ''}</p></div>
               <strong className="num neg">{fmtAr(-m.amount)}</strong>
               {canDel && <IconButton icon="trash" label="Supprimer" onClick={() => setDel(m)} />}
             </li>
@@ -133,7 +134,7 @@ function Expenses({ date, moves, total, mine: onlyMine }: { date: string; moves:
 }
 
 const KIND = { shop: { label: 'Sur place', tone: 'brand' }, online: { label: 'Livraison', tone: 'neutral' }, return: { label: 'Retour', tone: 'danger' } } as const;
-const hm = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const hm = (iso: string) => new Date(iso).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' });
 
 /** Aperçu du jour à vérifier, puis envoi WhatsApp (seulement après confirmation de la vérification). */
 function Review({ date, r, text, canExp }: { date: string; r: ReturnType<typeof dayRecap>; text: string; canExp: boolean }) {

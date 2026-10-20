@@ -10,6 +10,8 @@ import {
 } from '../orders';
 import type { Company } from '../settings';
 import { adjustKept, adjustLabel } from '../lots';
+import { loc, tr, trLines } from '../i18n';
+import { fmtAmount } from '../currency';
 
 export type Block =
   | { k: 'text'; s: string; align?: 'left' | 'center' | 'right'; bold?: boolean; big?: boolean }
@@ -57,7 +59,8 @@ export const logoFor = (r: Row, allowed: string | null | undefined) => (allowed 
 /** Transforme les blocs en lignes de texte de largeur fixe (utilisé pour l'aperçu, l'image et l'imprimante). */
 export function layout(doc: PrintDoc, cols: number): Row[] {
   const rows: Row[] = [];
-  for (const b of doc.blocks) {
+  for (const b0 of doc.blocks) {
+    const b: Block = b0.k === 'pair' ? { ...b0, l: tr(b0.l) } : b0;
     if (b.k === 'logo') rows.push({ s: '', logo: true, logoSrc: b.src });
     else if (b.k === 'qr') rows.push({ s: '', qr: b.data });
     else if (b.k === 'cut') rows.push({ s: '', cut: true });
@@ -65,12 +68,12 @@ export function layout(doc: PrintDoc, cols: number): Row[] {
     else if (b.k === 'line') rows.push({ s: (b.ch ?? '-').repeat(cols) });
     else if (b.k === 'text') {
       const w = b.big ? Math.floor(cols / 2) : cols;
-      for (const l of wrap(b.s, w)) {
+      for (const l of wrap(trLines(b.s), w)) {
         const pad = b.align === 'center' ? Math.floor((w - l.length) / 2) : b.align === 'right' ? w - l.length : 0;
         rows.push({ s: ' '.repeat(Math.max(0, pad)) + l, bold: b.bold, big: b.big });
       }
     } else {
-      const r = clean(b.r);
+      const r = clean(tr(b.r));
       // Gros caractères : si le libellé et le montant ne tiennent pas sur une ligne, le libellé passe au-dessus.
       if (b.big && b.l.length + r.length + 1 > Math.floor(cols / 2)) {
         for (const l of wrap(b.l, cols)) rows.push({ s: l, bold: true });
@@ -97,7 +100,7 @@ export function joinDocs(title: string, docs: PrintDoc[]): PrintDoc {
 const T = (s: string, o: Partial<Extract<Block, { k: 'text' }>> = {}): Block => ({ k: 'text', s, ...o });
 const P = (l: string, r: string, o: Partial<Extract<Block, { k: 'pair' }>> = {}): Block => ({ k: 'pair', l, r, ...o });
 const L = (ch: '-' | '=' = '-'): Block => ({ k: 'line', ch });
-const dt = (iso?: string) => (iso ? new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+const dt = (iso?: string) => (iso ? new Date(iso).toLocaleString(loc(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const ar = (n: number) => fmtAr(n);
 
 function header(c: Brand, withLogo = true): Block[] {
@@ -119,7 +122,7 @@ function itemName(variantId: string) {
   return [p?.name || 'Article', vl && vl !== 'Unique' && !p?.attrs ? vl : ''].filter(Boolean).join(' - ');
 }
 function itemLines(variantId: string, qty: number, price: number, note = ''): Block[] {
-  return [T(itemName(variantId) + note), P(`  ${fmtNum(qty)} x ${fmtNum(price)}`, ar(qty * price))];
+  return [T(itemName(variantId) + note), P(`  ${fmtNum(qty)} x ${fmtAmount(price)}`, ar(qty * price))];
 }
 
 // ---------- En-tête au nom de la page ----------
@@ -255,7 +258,7 @@ export function parcelLabelDoc(o: Order, company: Company): PrintDoc {
   b.push(T(o.name || 'Client', { bold: true, big: true }));
   if (o.phone) b.push(T(fmtPhone(o.phone), { bold: true, big: true }));
   b.push(T(`${zone?.name || ''}${o.place ? ' - ' + o.place : ''}`, { bold: true }));
-  if (o.wantedDate) b.push(T(`Livraison souhaitée : ${new Date(o.wantedDate + 'T12:00:00').toLocaleDateString('fr-FR')}`));
+  if (o.wantedDate) b.push(T(`Livraison souhaitée : ${new Date(o.wantedDate + 'T12:00:00').toLocaleDateString(loc())}`));
   if (courier) b.push(T(`Livreur : ${courier.name}`));
   b.push(L());
   for (const l of o.lines) b.push(T(`${fmtNum(l.qty)} x ${itemName(l.variantId)}${l.isChoice ? ' (CHOIX)' : ''}`));

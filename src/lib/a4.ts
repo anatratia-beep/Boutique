@@ -3,6 +3,7 @@
 import { get } from './db';
 import { fmtMoney } from './currency';
 import { DEFAULT_COMPANY, type Company } from './settings';
+import { loc, translateDom } from './i18n';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const h = esc;
@@ -45,7 +46,7 @@ export function printA4(title: string, subtitle: string, body: string) {
 <header>${c.logo ? `<img src="${c.logo}" alt="">` : ''}<div class="co"><b>${esc(c.name)}</b><span>${esc([c.address, c.phone, c.nif ? 'NIF ' + c.nif : '', c.stat ? 'STAT ' + c.stat : ''].filter(Boolean).join(' · '))}</span></div>
 <div class="doc"><b>${esc(title)}</b><span>${esc(subtitle)}</span></div></header>
 ${body}
-<footer><span>${esc(c.name)} — Trésor en ligne</span><span>Imprimé le ${esc(new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }))}</span></footer>
+<footer><span>${esc(c.name)} — Trésor en ligne</span><span>Imprimé le ${esc(new Date().toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' }))}</span></footer>
 </body></html>`;
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
@@ -53,6 +54,7 @@ ${body}
   document.body.appendChild(f);
   const d = f.contentDocument!;
   d.open(); d.write(html); d.close();
+  translateDom(d.documentElement);
   const go = () => { try { f.contentWindow!.focus(); f.contentWindow!.print(); } finally { setTimeout(() => f.remove(), 60_000); } };
   if (d.readyState === 'complete') setTimeout(go, 250); else f.onload = () => setTimeout(go, 250);
 }

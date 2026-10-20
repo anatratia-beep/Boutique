@@ -32,6 +32,7 @@ import { AdjustList, LotPicker, LotTag, lotPhoto } from './Lots';
 import { SettleModal, settleRow } from './Settle';
 import { allPages } from '../lib/boosts';
 import { isLot, lotAvailable, lotOpen } from '../lib/lots';
+import { loc } from '../lib/i18n';
 
 const CLOSED: OrderStatus[] = ['delivered', 'partial', 'refused'];
 const TABS: { key: string; label: string; statuses: OrderStatus[]; match?: (o: Order) => boolean }[] = [
@@ -85,7 +86,7 @@ export function OrderStatusBadge({ o }: { o: Order }) {
   return <>
     <Badge tone={st.tone}>{o.kind === 'exchange' ? `Échange · ${st.label}` : st.label}</Badge>
     {hasPendingChoice(o) && (choiceGiven(o) ? <Badge tone="ok">Choix indiqué</Badge> : <Badge tone="danger">Choix à préciser ({choiceQty(o)})</Badge>)}
-    {reportCount(o) > 0 && o.status !== 'cancelled' && <Badge tone={reportCount(o) >= MAX_REPORTS ? 'danger' : 'warn'}>Reportée {reportCount(o)}/{MAX_REPORTS}{o.wantedDate && ['new', 'confirmed', 'ready'].includes(o.status) ? ` · au ${new Date(`${o.wantedDate}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}` : ''}</Badge>}
+    {reportCount(o) > 0 && o.status !== 'cancelled' && <Badge tone={reportCount(o) >= MAX_REPORTS ? 'danger' : 'warn'}>Reportée {reportCount(o)}/{MAX_REPORTS}{o.wantedDate && ['new', 'confirmed', 'ready'].includes(o.status) ? ` · au ${new Date(`${o.wantedDate}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit' })}` : ''}</Badge>}
   </>;
 }
 
@@ -207,7 +208,7 @@ export function OrderRow({ o }: { o: Order }) {
             {isPickupZone(o.zoneId) && !['delivered', 'partial', 'refused', 'cancelled'].includes(o.status) && <Badge>Sur boutique</Badge>}
           </div>
           <p className="small muted">{o.number}{o.phone ? ` · ${fmtPhone(o.phone)}` : ''} · {zone?.name || 'Zone ?'}{o.place ? ` — ${o.place}` : ''}</p>
-          <p className="small muted">{fmtNum(totalQty(o))} article(s){o.lines.some((l) => l.isChoice) ? ` + ${o.lines.filter((l) => l.isChoice).reduce((s, l) => s + l.qty, 0)} en choix` : ''}{courier ? ` · ${courier.name}` : ''} · {o.orderDate ? <>commande du {new Date(o.orderDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' })} <span title="Date de saisie">(saisie {fmtDateTime(o.createdAt)})</span></> : fmtDateTime(o.createdAt)}</p>
+          <p className="small muted">{fmtNum(totalQty(o))} article(s){o.lines.some((l) => l.isChoice) ? ` + ${o.lines.filter((l) => l.isChoice).reduce((s, l) => s + l.qty, 0)} en choix` : ''}{courier ? ` · ${courier.name}` : ''} · {o.orderDate ? <>commande du {new Date(o.orderDate).toLocaleDateString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' })} <span title="Date de saisie">(saisie {fmtDateTime(o.createdAt)})</span></> : fmtDateTime(o.createdAt)}</p>
           {needsSettlement(o) && <p className="small"><Badge tone="warn">À régler avec {courier?.name ?? 'le livreur'}</Badge> le livreur doit verser {fmtAr(settleRow(o).e)}</p>}
           {['delivered', 'partial', 'refused'].includes(o.status) && (() => { const fs = feeState(o); return fs !== 'none' ? <p className="small fee-line">Frais livreur {fmtAr(courierSplit(o).fee)} · <Badge tone={FEE_STATE[fs].tone}>{FEE_STATE[fs].label}</Badge></p> : null; })()}
         </div>
@@ -445,7 +446,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
           <TextField label="Date de livraison souhaitée" type="date" value={wantedDate} onChange={setWantedDate} />
         </div>
         {!order && <TextField label="Date de commande" type="date" value={orderDateYmd} onChange={setOrderDateYmd}
-          hint={orderDateYmd !== ymdL(new Date(bizNow())) ? `Commande et acompte rattachés au ${new Date(`${orderDateYmd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit' })} (saisie après la fermeture ou à une autre date).` : 'Aujourd’hui. Après la fermeture (17:30 en semaine, 17:00 le samedi, dimanche), le jour de travail suivant est proposé automatiquement.'} />}
+          hint={orderDateYmd !== ymdL(new Date(bizNow())) ? `Commande et acompte rattachés au ${new Date(`${orderDateYmd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit' })} (saisie après la fermeture ou à une autre date).` : 'Aujourd’hui. Après la fermeture (17:30 en semaine, 17:00 le samedi, dimanche), le jour de travail suivant est proposé automatiquement.'} />}
         {!order && (
           <div className="card stack" style={{ background: 'var(--surface-2)' }}>
             <strong className="small">Paiement déjà reçu (facultatif)</strong>
@@ -610,7 +611,7 @@ export function RedateModal({ settlement, order, onClose }: { settlement?: Couri
         if (err) throw new Error(err);
         if (!reason.trim()) throw new Error('Indiquez la raison.');
         if (viaSettlement) await redateSettlement(s!, day, reason.trim()); else await redateReturn(order!, day, reason.trim());
-        toast(`Date corrigée : ${new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR')}`);
+        toast(`Date corrigée : ${new Date(`${day}T12:00:00`).toLocaleDateString(loc())}`);
       }}
       message={<div className="stack-s">
         <p>Enregistré le <strong>{fmtDateTime(from)}</strong>. {viaSettlement ? <>Tout le versement passe à la nouvelle date : l’argent reçu du livreur (caisse), son compte et le retour de {list.length > 1 ? `ces ${list.length} colis` : 'ce colis'} ({list.map((x) => x.number).join(', ') || 'aucun colis'}) : refus, choix, articles revenus en stock.</> : cancelled ? <>L’annulation de {order?.number} (déduite des ventes de ce jour-là) et le retour des articles en stock passent à la nouvelle date.</> : <>Le retour de {order?.number} (refus, choix, argent du livreur, articles revenus en stock) passe à la nouvelle date.</>}</p>
@@ -658,7 +659,7 @@ function OrderDetail({ id }: { id: string }) {
         <div className="row-between" style={{ alignItems: 'flex-start' }}>
           <div className="stack-s">
             <div className="row" style={{ gap: 8 }}><h1 style={{ fontSize: '1.6rem' }}>{o.number}</h1><OrderStatusBadge o={o} />{o.outsideHours && <Badge>Reçue hors heures</Badge>}</div>
-            <p className="muted">{o.internal ? `Vente interne — employé : ${o.employeeName || '?'} (prix de revient arrondi)` : CHANNELS[o.channel]} · {o.orderDate ? `commande du ${new Date(o.orderDate).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })} (saisie ${fmtDateTime(o.createdAt)})` : fmtDateTime(o.createdAt)}{can('couriers.settle') && !isWalkIn(o) && o.status !== 'cancelled' ? <> · <button type="button" className="link-btn" style={{ padding: 0 }} onClick={() => setModal('orderdate')}>Changer la date de commande</button></> : null}{o.createdByName ? ` · par ${o.createdByName}` : ''}</p>
+            <p className="muted">{o.internal ? `Vente interne — employé : ${o.employeeName || '?'} (prix de revient arrondi)` : CHANNELS[o.channel]} · {o.orderDate ? `commande du ${new Date(o.orderDate).toLocaleDateString(loc(), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })} (saisie ${fmtDateTime(o.createdAt)})` : fmtDateTime(o.createdAt)}{can('couriers.settle') && !isWalkIn(o) && o.status !== 'cancelled' ? <> · <button type="button" className="link-btn" style={{ padding: 0 }} onClick={() => setModal('orderdate')}>Changer la date de commande</button></> : null}{o.createdByName ? ` · par ${o.createdByName}` : ''}</p>
           </div>
           <div className="page-actions">
             <PrintButton docs={printDocs(o, company)} />
@@ -884,7 +885,7 @@ export function ReturnModal({ order: o, onClose }: { order: Order; onClose: () =
         </div>
         {postpone && <PostponeModal order={o} onClose={() => setPostpone(false)} onDone={onClose} />}
         <TextField label="Date réelle du retour du livreur" type="date" required value={retDay} onChange={setRetDay} error={dayError || null}
-          hint={o.dispatchedAt ? `Colis parti le ${new Date(o.dispatchedAt).toLocaleDateString('fr-FR')}. Le retour et l’argent sont comptés à cette date, même si vous l’enregistrez plus tard.` : undefined} />
+          hint={o.dispatchedAt ? `Colis parti le ${new Date(o.dispatchedAt).toLocaleDateString(loc())}. Le retour et l’argent sont comptés à cette date, même si vous l’enregistrez plus tard.` : undefined} />
         {toShop && <Confirm title="Livraison annulée : retrait en boutique" confirmLabel="Annuler la livraison" message={<div className="stack-s"><p>Le livreur rapporte le colis : les articles reviennent en boutique, <strong>réservés pour ce client</strong>.</p><p>Pas de frais de livraison pour le client, pas de dédommagement pour le livreur. Quand le client passera, ouvrez la commande et touchez « Remise au client en boutique » : elle sera comptée comme <strong>vente sur place</strong>.</p></div>}
           onClose={() => setToShop(false)} onConfirm={async () => { await cancelDeliveryToShop(o); toast('Livraison annulée : la commande attend le client en boutique'); onClose(); }} />}
         <div className="table-wrap">
@@ -972,7 +973,7 @@ function WeekendModal({ list, onClose }: { list: { o: Order; to: Date }[]; onClo
   const [off, setOff] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const sel = list.filter((x) => !off[x.o.id]);
-  const f = (d: Date | string) => new Date(d).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const f = (d: Date | string) => new Date(d).toLocaleString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   return (
     <Modal wide title="Commandes saisies après la fermeture → jour de travail suivant" onClose={onClose}
       footer={<><Button variant="ghost" onClick={onClose}>Annuler</Button><Button busy={busy} disabled={!sel.length} onClick={async () => {
@@ -1145,7 +1146,7 @@ export function PostponeModal({ order: o, onClose, onDone }: { order: Order; onC
   const [reason, setReason] = useState(REPORT_REASONS[0]);
   const [other, setOther] = useState('');
   const why = reason === 'Autre' ? other.trim() : reason;
-  const history = (o.reports || []).map((r, i) => <li key={i} className="small">{i + 1}. {new Date(r.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{r.to ? ` → au ${new Date(`${r.to}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}` : ''}{r.reason ? ` — ${r.reason}` : ''}{r.user ? ` (${r.user})` : ''}</li>);
+  const history = (o.reports || []).map((r, i) => <li key={i} className="small">{i + 1}. {new Date(r.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{r.to ? ` → au ${new Date(`${r.to}T12:00:00`).toLocaleDateString(loc(), { day: '2-digit', month: '2-digit' })}` : ''}{r.reason ? ` — ${r.reason}` : ''}{r.user ? ` (${r.user})` : ''}</li>);
   if (n >= MAX_REPORTS) return (
     <Confirm title={`${o.number} : déjà reportée ${n} fois`} danger confirmLabel="Annuler la commande" onClose={onClose}
       message={<div className="stack-s"><p>Le client a déjà fait reporter cette livraison <strong>{n} fois</strong> sans prendre sa commande. Elle doit maintenant être <strong>annulée</strong> : les articles reviennent exactement en stock.</p><ul className="stack-s" style={{ margin: 0, paddingLeft: 16 }}>{history}</ul>
@@ -1182,7 +1183,7 @@ function CancelModal({ order: o, onClose }: { order: Order; onClose: () => void 
     <Confirm title={`Annuler ${o.number}`} danger confirmLabel="Annuler la commande" onClose={onClose}
       message={<div className="stack"><p>{o.status === 'out' ? 'Les articles partis avec le livreur seront remis en stock.' : 'La commande ne réservera plus de stock.'}</p>
         <SelectField label="Motif" value={reason} onChange={setReason} options={['Client injoignable', 'Client a annulé', 'Article indisponible', 'Erreur de saisie', 'Doublon', 'Autre'].map((r) => ({ value: r, label: r }))} />
-        {out && <TextField label="Date réelle de l’annulation (retour du livreur)" type="date" required value={day} onChange={setDay} error={dayError || null} hint={`Colis parti le ${new Date(o.dispatchedAt!).toLocaleDateString('fr-FR')} : l’annulation est comptée ce jour-là (ventes, caisse, stock), même si vous la saisissez plus tard.`} />}</div>}
+        {out && <TextField label="Date réelle de l’annulation (retour du livreur)" type="date" required value={day} onChange={setDay} error={dayError || null} hint={`Colis parti le ${new Date(o.dispatchedAt!).toLocaleDateString(loc())} : l’annulation est comptée ce jour-là (ventes, caisse, stock), même si vous la saisissez plus tard.`} />}</div>}
       onConfirm={async () => { if (dayError) throw new Error(dayError); await cancelOrder(o, reason, out ? returnAt(day, [o]) : undefined); toast('Commande annulée'); }} />
   );
 }

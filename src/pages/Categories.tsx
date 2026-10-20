@@ -15,6 +15,7 @@ import { resizeImage } from '../lib/settings';
 import { pageRemovalInfo, removePage, restorePage } from '../lib/pages';
 import { Help, Button, Confirm, Empty, IconButton, Modal, PageHead, Req, SelectField, TextField, navigate, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { loc } from '../lib/i18n';
 
 const fileName = (c: Category) => `Tresor-en-ligne-${(c.code || suggestCatCode(c.name)).toLowerCase()}-articles.xlsx`;
 
@@ -84,7 +85,7 @@ export function CategoriesPage() {
             <li key={c.id} className="list-item">
               <span className="page-logo">{c.logo ? <img src={c.logo} alt="" /> : <Icon name="store" size={18} />}</span>
               <div className="list-item-main"><span className="list-item-title">{c.name}</span>
-                <p className="small muted">Supprimée{c.removedAt ? ` le ${new Date(c.removedAt).toLocaleDateString('fr-FR')}` : ''}{c.removedBy ? ` par ${c.removedBy}` : ''} · {products.filter((p) => p.removedWithPage === c.id).length} article(s) rangé(s) avec elle</p></div>
+                <p className="small muted">Supprimée{c.removedAt ? ` le ${new Date(c.removedAt).toLocaleDateString(loc())}` : ''}{c.removedBy ? ` par ${c.removedBy}` : ''} · {products.filter((p) => p.removedWithPage === c.id).length} article(s) rangé(s) avec elle</p></div>
               {editable && <Button variant="ghost" icon="refresh" onClick={async () => { await restorePage(c.id); toast(`Page « ${c.name} » restaurée`); }}>Restaurer</Button>}
             </li>
           ))}</ul>

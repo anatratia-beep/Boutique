@@ -10,8 +10,9 @@ import { cancelPayout, catName, grid, monthly, payoutOf, payouts, unpaidWeeks, u
 import type { Payout } from '../lib/closed';
 import { Badge, Button, Empty, Modal, SelectField, TextField, fmtDate, fmtDateTime, toast } from '../ui/kit';
 import { exportTables, type Col } from '../ui/table';
+import { loc } from '../lib/i18n';
 
-const dayName = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+const dayName = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' });
 const cell = (v: number) => (v ? fmtAr(v) : '—');
 const useWatch = () => { useTable('orders'); useTable('cashMoves'); useTable('payouts'); useTable('boostReadings'); useTable('boosts'); useTable('categories'); useTable('settings'); useTable('financeCategories'); };
 
@@ -258,7 +259,7 @@ export function MonthlyRecap() {
       </div>
       <div className="card card-flush">
         <div className="card-pad row-between">
-          <div><h2>Récapitulatif mensuel</h2><p className="small muted">Comme l’onglet « RECAP MENSUEL » : ventes par page, CA, dépenses, reste (CA − dépenses), versé au patron, boost converti en ariary{withProfit ? ', bénéfice net estimé = CA − coût des articles − boost − dépenses' : ''}.</p></div>
+          <div><h2>Récapitulatif mensuel</h2><p className="small muted">Comme l’onglet « RECAP MENSUEL » : ventes par page, CA, dépenses, reste (CA − dépenses), versé au patron, boost converti dans la devise de la boutique{withProfit ? ', bénéfice net estimé = CA − coût des articles − boost − dépenses' : ''}.</p></div>
           <div className="row" style={{ gap: 6 }}>
             <div className="segmented" role="group" aria-label="Nombre de mois">{[3, 6, 12].map((k) => <button key={k} type="button" aria-pressed={n === k} onClick={() => setN(k)}>{k} mois</button>)}</div>
             <Button variant="ghost" icon="download" onClick={() => exportTables(`recap-mensuel_${today()}.xlsx`, [{ name: 'Récap mensuel', cols, rows }])}>Excel</Button>

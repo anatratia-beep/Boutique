@@ -4,6 +4,7 @@ import { activate, deviceCode, frDate, licenseHeartbeat, licenseState, VENDOR_CO
 import { Button } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { AuthShell } from './Auth';
+import { LangPicker } from '../ui/langPicker';
 
 async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); return true; } catch { /* */ }
@@ -41,6 +42,7 @@ export function ActivationScreen({ initial, onDone }: { initial: LicenseState; o
   const expired = !initial.ok && initial.reason === 'expired';
   return (
     <AuthShell>
+      <LangPicker compact />
       <div className="stack-s">
         <h2>{expired ? 'Licence expirée' : 'Activation'}</h2>
         <p className="muted">Ce logiciel est réservé aux clients ayant acheté une licence.</p>
