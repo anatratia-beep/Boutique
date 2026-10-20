@@ -22,6 +22,14 @@ Logiciel de gestion commerciale : achats (Chine), stock, ventes en ligne et en b
 | 9 | Rôle Responsable (assigne les livreurs), versements des vendeurs au responsable, récap jours × pages avec boost et bénéfice par page | ✅ terminé |
 | 10 | Corrections (stock remis exactement), recherche exacte, inventaire complet, journal avec niveaux et vérification, points de restauration, alerte compte boost | ✅ terminé |
 
+## Licence (version vendue)
+
+- Le logiciel ne s'ouvre qu'avec une **clé de licence** créée par le vendeur pour l'appareil du client (`src/lib/license.ts`).
+- Le client envoie son **code appareil** (affiché à l'écran d'activation) ; le vendeur crée la clé dans son espace « Licences Boutique ».
+- Licence à vie ou avec date de fin ; vérification entièrement hors ligne ; 1 clé = 1 appareil.
+- La **clé secrète du vendeur** n'est jamais dans ce dépôt. Sans elle, impossible de créer de nouvelles clés : la garder en lieu sûr.
+- Synchronisation cloud désactivée (`CLOUD_ENABLED = false`).
+
 ## Première connexion
 
 Identifiant `super-adm`, mot de passe d'origine fourni séparément — il doit être changé dès la première connexion.

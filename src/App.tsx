@@ -1,5 +1,7 @@
 // Structure de l'application : démarrage, accès, menu adapté au rôle, pages.
 import { useEffect, useState, type ReactNode } from 'react';
+import { CLOUD_ENABLED } from './lib/license';
+import { LicenseWatch } from './pages/License';
 import { RecapShortcut } from './ui/eveningRecap';
 import { usePrintStationWorker } from './lib/print';
 import { TreasuryPage } from './pages/Treasury';
@@ -130,6 +132,7 @@ export function App() {
   return (
     <>
       {screen}
+      <LicenseWatch />
       <UpdateBar />
       <Toasts />
     </>
@@ -184,7 +187,7 @@ function Shell() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="sidebar-tools"><SyncPill /><NotifBell /></div>
+          <div className="sidebar-tools">{CLOUD_ENABLED && <SyncPill />}<NotifBell /></div>
           <a className="me" href="#/compte" aria-current={route === '/compte' ? 'page' : undefined}>
             <span className="avatar">{user.fullName.charAt(0).toUpperCase()}</span>
             <span style={{ minWidth: 0, flex: 1 }}>
@@ -204,7 +207,7 @@ function Shell() {
           <div className="brand"><BrandLogo /><span className="brand-name">{company.name}</span></div>
           <RecapShortcut compact />
           <NotifBell />
-          <SyncPill />
+          {CLOUD_ENABLED && <SyncPill />}
         </header>
         <main className="main">
           <div className="content"><UpdatedBanner /><WorkDateBanner /><NotifBar /><BackBar items={items} />{current.page()}</div>

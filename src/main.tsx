@@ -10,6 +10,9 @@ import { repairAfterReset } from './lib/backup';
 import { consumeEmailLink } from './lib/maintenance';
 import { startSync } from './lib/sync';
 import { App } from './App';
+import { licenseState } from './lib/license';
+import { ActivationScreen } from './pages/License';
+import { InstallScreen, wantsInstallPage } from './pages/Install';
 
 declare global {
   const __APP_VERSION__: string;
@@ -32,6 +35,14 @@ function guessDeviceName() {
 async function boot() {
   try {
     await openDb();
+    // Licence : sans clé valide pour cet appareil, seul l'écran d'activation s'affiche.
+    const lic = await licenseState();
+    if (!lic.ok) {
+      // D'abord proposer l'installation : sur iPhone, l'application installée ne partage pas les données de Safari,
+      // il faut donc activer la licence DANS l'application installée.
+      if (wantsInstallPage()) await new Promise<void>((done) => root.render(<InstallScreen onSkip={done} />));
+      await new Promise<void>((done) => root.render(<ActivationScreen initial={lic} onDone={done} />));
+    }
     await setMeta('dashPeriod', null); // le tableau de bord rouvre toujours sur « Aujourd'hui »
     // Nouvelle version avec de nouvelles tables (ex. clients à suivre) : une ancienne version a pu recevoir
     // ces données sans savoir les garder. On reprend donc la synchronisation depuis le début, une fois.

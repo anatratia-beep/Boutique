@@ -14,6 +14,8 @@ import { PrintersTab } from './Printers';
 import { ClearDataCard, ToolsTab } from './Tools';
 import { KEEP, deleteCloudBackup, pruneBackups } from '../lib/maintenance';
 import { ConflictsCard, DevicesCard } from './SyncCards';
+import { LicenseCard } from './License';
+import { CLOUD_ENABLED } from '../lib/license';
 import { actionsSince, createRestorePoint, restorePoints, restoreToPoint, type RestorePoint } from '../lib/restorePoints';
 
 const TABS = [
@@ -21,7 +23,8 @@ const TABS = [
   { key: 'apparence', label: 'Apparence', perm: '' },
   { key: 'imprimantes', label: 'Imprimantes', perm: '' },
   { key: 'zones', label: 'Zones de livraison', perm: 'couriers.view' },
-  { key: 'cloud', label: 'Cloud et synchronisation', perm: 'backup.manage' },
+  ...(CLOUD_ENABLED ? [{ key: 'cloud', label: 'Cloud et synchronisation', perm: 'backup.manage' }] : []),
+  { key: 'licence', label: 'Licence', perm: '' },
   { key: 'sauvegarde', label: 'Sauvegardes', perm: 'backup.manage' },
   { key: 'outils', label: 'Outils', perm: 'users.manage' },
   { key: 'systeme', label: 'Système', perm: 'system.admin' },
@@ -45,6 +48,7 @@ export function SettingsPage() {
       {current.key === 'imprimantes' && <PrintersTab />}
       {current.key === 'zones' && <Zones />}
       {current.key === 'cloud' && <CloudTab />}
+      {current.key === 'licence' && <LicenseCard />}
       {current.key === 'sauvegarde' && <BackupTab />}
       {current.key === 'outils' && <ToolsTab />}
       {current.key === 'systeme' && <SystemTab />}
@@ -372,7 +376,7 @@ function BackupTab() {
     <div className="stack">
       <FileBackupCard />
 
-      <div className="card stack">
+      <div className="card stack" style={!CLOUD_ENABLED && !hasCloud ? { display: 'none' } : undefined}>
         <div className="row-between">
           <div><h3>Copies dans le cloud</h3><p className="muted small">Faites automatiquement chaque jour par l'appareil d'un admin ou du gérant. On garde les {KEEP.daily} dernières quotidiennes, {KEEP.weekly} hebdomadaires et {KEEP.monthly} mensuelles ; les plus anciennes sont effacées toutes seules. Les copies manuelles ne sont jamais effacées automatiquement.</p></div>
           {hasCloud && <Badge tone={lastCloud ? 'ok' : 'warn'}>Dernière : {timeAgo(lastCloud ?? undefined)}</Badge>}

@@ -8,6 +8,7 @@ import { useCompany } from '../lib/settings';
 import { connectCloud } from '../lib/sync';
 import { Button, PasswordField, Req, SelectField, TextField, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { CLOUD_ENABLED } from '../lib/license';
 
 export function BrandLogo({ size }: { size?: number }) {
   const c = useCompany();
@@ -19,7 +20,7 @@ export function BrandLogo({ size }: { size?: number }) {
 }
 
 /** Cadre des écrans d'accès : panneau d'accueil en dégradé violet et carte blanche de connexion qui le chevauche. */
-function AuthShell({ children }: { children: ReactNode }) {
+export function AuthShell({ children }: { children: ReactNode }) {
   const c = useCompany();
   const h = new Date().getHours();
   const moment = h < 12 ? 'Bonne matinée' : h < 18 ? 'Bon après-midi' : 'Bonne soirée';
@@ -80,9 +81,9 @@ function LoginForm({ onForgot, onCloud }: { onForgot: () => void; onCloud: () =>
       </form>
       <div className="row-between">
         <Button variant="quiet" type="button" onClick={onForgot}>Mot de passe oublié ?</Button>
-        <Button variant="quiet" type="button" icon="cloud" onClick={onCloud}>Relier au cloud</Button>
+        {CLOUD_ENABLED && <Button variant="quiet" type="button" icon="cloud" onClick={onCloud}>Relier au cloud</Button>}
       </div>
-      <p className="small muted">Nouvel appareil ? Reliez-le d'abord au cloud de la société pour retrouver vos comptes et vos données.</p>
+      {CLOUD_ENABLED && <p className="small muted">Nouvel appareil ? Reliez-le d'abord au cloud de la société pour retrouver vos comptes et vos données.</p>}
     </AuthShell>
   );
 }
