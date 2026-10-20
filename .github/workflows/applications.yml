@@ -1,6 +1,7 @@
 # Construit les applications Boutique (Android .apk et Windows .exe) et les dépose dans « Releases ».
 # Se lance à chaque modification du logiciel, ou à la main : onglet Actions → « Applications » → Run workflow.
 # Rien n'est mis en ligne sur Internet : seuls les fichiers à installer sont produits.
+# Android : signé avec la clé du vendeur (secrets ANDROID_KEYSTORE_*), pour que les mises à jour s'installent par-dessus.
 name: Applications
 on:
   push:
