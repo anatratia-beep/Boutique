@@ -1,5 +1,6 @@
 // Gestion des utilisateurs : seul l'admin crée les comptes et attribue les rôles.
 import { useMemo, useState } from 'react';
+import { userLimit } from '../lib/license';
 import { audit, normUsername, removeUser, roleOf, setPassword, SUPERADMIN_ID, useCurrentUser, type Role, type User, useMe } from '../lib/auth';
 import { hashSecret } from '../lib/crypto';
 import { save, useTable } from '../lib/db';
@@ -167,6 +168,10 @@ function UserForm({ user, me, roles, users, onClose, onCreated }: { user: User |
     if (!fullName.trim()) return setError('Indiquez le nom complet.');
     if (!/^[a-z0-9._-]{3,}$/.test(uname)) return setError("Identifiant : au moins 3 caractères, sans espace ni accent (lettres, chiffres, . _ -).");
     if (users.some((u) => u.username === uname && u.id !== user?.id)) return setError('Cet identifiant est déjà utilisé.');
+    const maxUsers = userLimit();
+    if (maxUsers && active && (!user || !user.active) && users.filter((u) => u.active && u.id !== user?.id).length >= maxUsers) {
+      return setError(`Votre licence permet ${maxUsers} compte${maxUsers > 1 ? 's' : ''} actif${maxUsers > 1 ? 's' : ''}. Désactivez un compte ou demandez une offre plus grande au vendeur.`);
+    }
     if (canSetPwd && (!user || pwd) && pwd.trim().length < 4) return setError('Le mot de passe doit avoir au moins 4 caractères.');
     if (canSetPwd && pwd && pwd !== pwd.trim()) return setError('Le mot de passe ne doit pas commencer ni finir par un espace.');
     setBusy(true);

@@ -70,6 +70,9 @@ async function freshConfig(): Promise<CloudConfig | null> {
   return next;
 }
 
+/** Session cloud à jour (jeton rafraîchi si besoin), pour les appels hors synchronisation. */
+export const cloudSession = () => freshConfig();
+
 let running = false;
 let again = false;
 
@@ -125,7 +128,7 @@ export async function syncNow(): Promise<void> {
           .filter((x) => x.r)
           .map(({ e, r }) => ({ tbl: e.tbl, id: r!.id, data: r, updated_at: r!.updatedAt, device }));
         if (rows.length) {
-          const res = await fetch(`${cfg.url}/rest/v1/records?on_conflict=tbl,id&select=tbl,id,updated_at`, {
+          const res = await fetch(`${cfg.url}/rest/v1/records?on_conflict=shop,tbl,id&select=tbl,id,updated_at`, {
             method: 'POST',
             headers: { ...headers(cfg), Prefer: 'resolution=merge-duplicates,return=representation' },
             body: JSON.stringify(rows),

@@ -114,9 +114,9 @@ function ForgotScreen({ onBack }: { onBack: () => void }) {
           const u = findUser(username);
           if (!u) return setError("Ce nom d'utilisateur n'existe pas sur cet appareil.");
           if (!managesOwnPassword(u)) return setError("Votre mot de passe est donné par le gérant : demandez-lui de vous le redonner.");
-          if (!u.secretAnswerHash && !getCloud()) return setError("Ce compte n'a pas de question secrète et l'appareil n'est pas relié au cloud. Demandez au super-admin de réinitialiser votre mot de passe.");
+          if (!u.secretAnswerHash && !(CLOUD_ENABLED && getCloud())) return setError("Ce compte n'a pas de question secrète et l'appareil n'est pas relié au cloud. Demandez au super-admin de réinitialiser votre mot de passe.");
           setError(null); setUser(u);
-          setMethod(!getCloud() ? 'question' : !u.secretAnswerHash ? 'email' : '');
+          setMethod(!(CLOUD_ENABLED && getCloud()) ? 'question' : !u.secretAnswerHash ? 'email' : '');
         }}>
           <TextField label="Nom d'utilisateur" required value={username} onChange={setUsername} autoCapitalize="none" autoFocus />
           {error && <div className="notice notice-danger"><Icon name="alert" /><span>{error}</span></div>}

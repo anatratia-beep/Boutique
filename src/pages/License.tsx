@@ -1,6 +1,6 @@
 // Écran d'activation (licence) et rappel avant expiration.
 import { useEffect, useState } from 'react';
-import { activate, deviceCode, frDate, licenseState, VENDOR_CONTACT, VENDOR_WHATSAPP, type LicenseState } from '../lib/license';
+import { activate, deviceCode, frDate, licenseHeartbeat, licenseState, VENDOR_CONTACT, VENDOR_WHATSAPP, type LicenseState } from '../lib/license';
 import { Button } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { AuthShell } from './Auth';
@@ -49,6 +49,7 @@ export function ActivationScreen({ initial, onDone }: { initial: LicenseState; o
         <li>Envoyez ce <strong>code appareil</strong> au vendeur{VENDOR_CONTACT ? <> ({VENDOR_CONTACT})</> : null}.</li>
         <li>Collez ci-dessous la <strong>clé de licence</strong> reçue, puis touchez « Activer ».</li>
       </ol>
+      {!initial.ok && initial.reason === 'revoked' && <div className="notice notice-danger"><Icon name="alert" /><span>{initial.message}</span></div>}
       {code && <DeviceCodeBox code={code} />}
       {code && VENDOR_WHATSAPP && (
         <a className="btn btn-ghost btn-block" href={`https://wa.me/${VENDOR_WHATSAPP}?text=${encodeURIComponent(`Bonjour, je souhaite ${expired ? 'renouveler' : 'activer'} ma licence Boutique. Mon code appareil : ${code}`)}`} target="_blank" rel="noopener">
@@ -67,9 +68,9 @@ export function ActivationScreen({ initial, onDone }: { initial: LicenseState; o
           <textarea id="licence-key" rows={4} value={key} onChange={(e) => setKey(e.target.value)} placeholder="BTQ-…" autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.8rem', wordBreak: 'break-all' }} />
         </div>
         {error && <div className="notice notice-danger"><Icon name="alert" /><span>{error}</span></div>}
-        <Button type="submit" busy={busy} block icon="key" disabled={!key.trim()}>Activer</Button>
+        <Button type="submit" busy={busy} block icon="key" disabled={!key.trim()}>{busy ? 'Activation…' : 'Activer'}</Button>
       </form>
-      <p className="small muted">Une clé ne fonctionne que sur l'appareil pour lequel elle a été créée. Internet n'est pas nécessaire.</p>
+      <p className="small muted">Licence 1 appareil : Internet n'est pas nécessaire. Licence multi-appareils : Internet est nécessaire pour activer chaque appareil, puis pour synchroniser.</p>
     </AuthShell>
   );
 }
@@ -80,6 +81,7 @@ export function LicenseWatch() {
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     const run = async () => {
+      if ((await licenseHeartbeat()) === 'revoked') { location.reload(); return; }
       const st = await licenseState();
       if (!st.ok) { location.reload(); return; } // expirée pendant l'utilisation : retour à l'écran d'activation
       setS(st);
@@ -111,6 +113,7 @@ export function LicenseCard() {
         <h2>Licence</h2>
         {s?.ok && <p className="small">
           Client : <strong>{s.info.client || '—'}</strong><br />
+          {s.info.version === 2 ? <>Offre multi-appareils : <strong>{s.info.seats} appareil{s.info.seats > 1 ? 's' : ''}</strong>, <strong>{s.info.users ? `${s.info.users} compte${s.info.users > 1 ? 's' : ''}` : 'comptes illimités'}</strong>, synchronisés<br /></> : <>Offre 1 appareil, hors ligne<br /></>}
           {s.info.expires ? <>Valable jusqu'au <strong>{frDate(s.info.expires)}</strong>{s.daysLeft !== null && <> ({s.daysLeft} jour{s.daysLeft > 1 ? 's' : ''} restant{s.daysLeft > 1 ? 's' : ''})</>}</> : <>Licence <strong>à vie</strong></>}
           {s.info.id && <><br /><span className="muted">N° {s.info.id}</span></>}
         </p>}
@@ -118,12 +121,13 @@ export function LicenseCard() {
       {code && <DeviceCodeBox code={code} />}
       <form className="stack-s" onSubmit={async (e) => {
         e.preventDefault();
+        setMsg({ ok: true, text: 'Vérification…' });
         const r = await activate(key);
         if (r.ok) { setS(r); setKey(''); setMsg({ ok: true, text: 'Nouvelle clé enregistrée.' }); }
         else setMsg({ ok: false, text: r.message });
       }}>
         <div className="field">
-          <label htmlFor="licence-new">Renouveler : coller une nouvelle clé</label>
+          <label htmlFor="licence-new">Renouveler ou changer d'offre : coller la nouvelle clé</label>
           <textarea id="licence-new" rows={3} value={key} onChange={(e) => setKey(e.target.value)} placeholder="BTQ-…" spellCheck={false} style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.8rem', wordBreak: 'break-all' }} />
         </div>
         {msg && <div className={`notice ${msg.ok ? 'notice-ok' : 'notice-danger'}`}><Icon name={msg.ok ? 'check' : 'alert'} /><span>{msg.text}</span></div>}

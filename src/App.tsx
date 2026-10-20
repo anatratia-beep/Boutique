@@ -141,9 +141,11 @@ export function App() {
 
 function SyncPill() {
   const s = useSyncStatus();
+  const cloud = useMeta('cloud', null);
+  if (!CLOUD_ENABLED && !cloud) return null;
   const text = { ok: 'Synchronisé', syncing: 'Synchro…', offline: 'Hors ligne', error: 'Erreur synchro', off: 'Local' }[s.state];
   return (
-    <button className={`sync sync-${s.state}`} onClick={() => (s.state === 'off' ? navigate('/parametres/cloud') : syncNow())}
+    <button className={`sync sync-${s.state}`} onClick={() => (s.state === 'off' ? navigate(CLOUD_ENABLED ? '/parametres/cloud' : '/parametres/licence') : syncNow())}
       title={s.error || (s.pending ? `${s.pending} modification(s) en attente` : text)}>
       <span className="sync-dot" />
       {text}{s.pending > 0 && s.state !== 'ok' && s.state !== 'off' ? ` · ${s.pending}` : ''}
@@ -187,7 +189,7 @@ function Shell() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="sidebar-tools">{CLOUD_ENABLED && <SyncPill />}<NotifBell /></div>
+          <div className="sidebar-tools"><SyncPill /><NotifBell /></div>
           <a className="me" href="#/compte" aria-current={route === '/compte' ? 'page' : undefined}>
             <span className="avatar">{user.fullName.charAt(0).toUpperCase()}</span>
             <span style={{ minWidth: 0, flex: 1 }}>
@@ -207,7 +209,7 @@ function Shell() {
           <div className="brand"><BrandLogo /><span className="brand-name">{company.name}</span></div>
           <RecapShortcut compact />
           <NotifBell />
-          {CLOUD_ENABLED && <SyncPill />}
+          <SyncPill />
         </header>
         <main className="main">
           <div className="content"><UpdatedBanner /><WorkDateBanner /><NotifBar /><BackBar items={items} />{current.page()}</div>

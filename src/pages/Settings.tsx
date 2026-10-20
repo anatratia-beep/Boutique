@@ -48,7 +48,7 @@ export function SettingsPage() {
       {current.key === 'imprimantes' && <PrintersTab />}
       {current.key === 'zones' && <Zones />}
       {current.key === 'cloud' && <CloudTab />}
-      {current.key === 'licence' && <LicenseCard />}
+      {current.key === 'licence' && <div className="stack"><LicenseCard />{getCloud() && !CLOUD_ENABLED && <><DevicesCard /><ConflictsCard /></>}</div>}
       {current.key === 'sauvegarde' && <BackupTab />}
       {current.key === 'outils' && <ToolsTab />}
       {current.key === 'systeme' && <SystemTab />}
