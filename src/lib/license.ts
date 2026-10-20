@@ -20,8 +20,8 @@ export const VENDOR_CONTACT = '+261 38 32 585 16';
 export const VENDOR_WHATSAPP = '261383258516';
 
 /** Cloud central du vendeur (licences multi-appareils). La clé « publishable » peut être publique. */
-export const CLOUD_URL = '';
-export const CLOUD_ANON_KEY = '';
+export const CLOUD_URL = 'https://ypoqpfkwciazohygigpg.supabase.co';
+export const CLOUD_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlwb3FwZmt3Y2lhem9oeWdpZ3BnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0ODExMDAsImV4cCI6MjEwODA1NzEwMH0.vifNAhWHDelDEI7-UxFHrD9gEz9EZcJ5r0uVF1rEIu0';
 
 /** Réglage manuel du cloud (formulaire « Relier au cloud ») : désactivé, le cloud vient de la licence. */
 export const CLOUD_ENABLED = false;

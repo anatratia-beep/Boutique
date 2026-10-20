@@ -102,4 +102,5 @@ grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.records to authenticated;
 grant select, insert, update, delete on public.backups to authenticated;
 grant usage, select on sequence public.records_rev_seq to authenticated;
+revoke execute on function public.current_shop(), public.device_ok() from public, anon;
 grant execute on function public.current_shop(), public.device_ok() to authenticated;
