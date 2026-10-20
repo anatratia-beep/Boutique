@@ -174,10 +174,14 @@ export function findCustomer(phone: string) {
 
 // ---------- Zones par défaut (identifiants fixes : identiques sur tous les appareils) ----------
 const SEED = '2000-01-01T00:00:00.000Z';
-const DEFAULT_ZONES = [
-  ['zone-retrait', 'Sur boutique (retrait par le client)', 0], ['zone-centre', 'Tana centre-ville', 3000], ['zone-proche', 'Tana périphérie proche', 4000],
+// Seule la zone « retrait en boutique » existe au départ : chaque boutique crée ses propres zones et frais
+// (Livraisons → Zones et frais). Les zones d'exemple ne servent qu'aux tests automatiques, sur l'ordinateur de développement.
+const PICKUP_ZONE = [['zone-retrait', 'Sur boutique (retrait par le client)', 0]] as const;
+const TEST_ZONES = [
+  ['zone-centre', 'Tana centre-ville', 3000], ['zone-proche', 'Tana périphérie proche', 4000],
   ['zone-peripherie', 'Tana périphérie', 5000], ['zone-loin', 'Tana grande périphérie', 7000], ['zone-province', 'Province (envoi taxi-brousse / coopérative)', 5000],
 ] as const;
+const DEFAULT_ZONES: readonly (readonly [string, string, number])[] = typeof location !== 'undefined' && location.hostname === 'localhost' ? [...PICKUP_ZONE, ...TEST_ZONES] : PICKUP_ZONE;
 /** Remet les zones par défaut (après une remise à l'état d'origine). */
 export async function restoreDefaultZones() {
   await save('zones', DEFAULT_ZONES.map(([id, name, fee], i) => ({ id, name, fee, order: i, active: true, pickup: id === 'zone-retrait' || undefined, deleted: false })));
