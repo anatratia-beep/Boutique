@@ -1,0 +1,30 @@
+{
+  "name": "boutique",
+  "productName": "Boutique",
+  "version": "1.0.0",
+  "description": "Logiciel de gestion commerciale Boutique",
+  "author": "Boutique",
+  "main": "main.cjs",
+  "private": true,
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "mg.anatratia.boutique",
+    "productName": "Boutique",
+    "files": ["main.cjs", "icon.png", "web/**/*"],
+    "directories": { "output": "release" },
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "icon.png" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Boutique",
+      "artifactName": "Boutique-Installation-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

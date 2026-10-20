@@ -1,3 +1,6 @@
 node_modules
 dist
 .DS_Store
+android/
+electron/web/
+electron/release/

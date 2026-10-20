@@ -21,7 +21,7 @@ import { Icon, type IconName } from './ui/icons';
 import { Button, IconButton, Toasts, markMenuNav, navigate, restoreScroll, useBackTarget, useRoute } from './ui/kit';
 import { BrandLogo, FirstSetupScreen, LockScreen, LoginScreen } from './pages/Auth';
 import { DashboardPage } from './pages/Dashboard';
-import { InstallScreen, wantsInstallPage } from './pages/Install';
+import { InstallScreen, isNativeApp, wantsInstallPage } from './pages/Install';
 import { UsersPage } from './pages/Users';
 import { RolesPage } from './pages/Roles';
 import { AuditPage } from './pages/Audit';
@@ -258,7 +258,7 @@ function UpdatedBanner() {
 function UpdateBar() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || location.hostname === 'localhost') return;
+    if (!('serviceWorker' in navigator) || location.hostname === 'localhost' || isNativeApp()) return;
     let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } });
     const busy = () => { const a = document.activeElement as HTMLElement | null; return !!document.querySelector('[role=dialog]') || !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); };

@@ -1,0 +1,7 @@
+{
+  "appId": "mg.anatratia.boutique",
+  "appName": "Boutique",
+  "webDir": "dist",
+  "server": { "androidScheme": "https", "hostname": "boutique.app" },
+  "android": { "allowMixedContent": false, "backgroundColor": "#EFEBF8" }
+}

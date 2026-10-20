@@ -12,7 +12,9 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); g.__installEvt = e; window.dispatchEvent(new Event('tsena-install-ready')); });
   window.addEventListener('appinstalled', () => { g.__installEvt = null; try { localStorage.setItem('boutique.installDone', '1'); } catch { /* */ } });
 }
-export const isStandalone = () => matchMedia('(display-mode: standalone)').matches || g.navigator.standalone === true;
+/** Application Android (Capacitor) ou Windows (Electron) : déjà « installée », pas de service worker. */
+export const isNativeApp = () => !!g.Capacitor?.isNativePlatform?.() || /Electron/.test(navigator.userAgent);
+export const isStandalone = () => isNativeApp() || matchMedia('(display-mode: standalone)').matches || g.navigator.standalone === true;
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 
