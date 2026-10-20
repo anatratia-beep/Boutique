@@ -1,7 +1,8 @@
 // Récapitulatifs pour le responsable : journée et semaine (lundi → samedi).
 // Le même contenu sert à l'écran, au message (WhatsApp, SMS, e-mail) et au ticket imprimé.
 import { fmtAr, fmtNum } from './catalog';
-import { ACCOUNTS, MOVE_TYPES, addDays, report, type AccountId, type Report } from './money';
+import { allNonCashIds, methodIds } from './paymethods';
+import { ACCOUNTS, allAccountIds, MOVE_TYPES, addDays, report, type AccountId, type Report } from './money';
 import type { Company } from './settings';
 import type { Block, PrintDoc } from './print/doc';
 import { daySynthesis, type Synthesis } from './synthesis';
@@ -9,7 +10,8 @@ import { daySynthesis, type Synthesis } from './synthesis';
 export interface Line { label: string; value: string; strong?: boolean; sub?: boolean }
 export interface Section { title: string; lines: Line[] }
 
-const MM: AccountId[] = ['mvola', 'orange', 'airtel'];
+/** Comptes hors espèces (mobile money, carte, virement…) : suit la liste des moyens de paiement. */
+const MM = (): AccountId[] => allNonCashIds();
 export const longDate = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const shortDay = (ymd: string) => new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
 const neg = (n: number) => (n ? '− ' + fmtAr(n) : fmtAr(0));
@@ -23,8 +25,8 @@ export function totals(r: Report) {
     deliv: delivValue, delivCount: r.deliveries.length,
     delivNet: r.deliveries.filter((d) => d.courierId).reduce((t, d) => t + d.net, 0),
     totalSales: r.sales.amount,
-    cashIn: r.receipts.cash, mmIn: sum(r.receipts, MM), bankIn: r.receipts.bank,
-    fromCouriers: sum(r.fromCouriers, ['cash', 'mvola', 'orange', 'airtel', 'bank']),
+    cashIn: r.receipts.cash, mmIn: sum(r.receipts, MM()), bankIn: r.receipts.bank,
+    fromCouriers: sum(r.fromCouriers, allAccountIds()),
     expenses: r.expenses,
   };
 }
@@ -43,13 +45,13 @@ function common(r: Report, withProfit: boolean): Section[] {
   ] });
   out.push({ title: 'Comptes livreurs', lines: r.couriers.length ? [
     ...r.couriers.map((c) => ({ label: `${c.name} : ${c.count} livraison(s)${c.out ? `, ${c.out} pas encore confirmée(s)` : ''}`, value: `à encaisser ${fmtAr(c.collect)}` })),
-    ...r.couriers.filter((c) => c.feeOwed).map((c) => ({ label: `Frais à reverser à ${c.name} (payés par Mobile Money)`, value: fmtAr(c.feeOwed), sub: true })),
+    ...r.couriers.filter((c) => c.feeOwed).map((c) => ({ label: `Frais à reverser à ${c.name} (payés hors espèces)`, value: fmtAr(c.feeOwed), sub: true })),
     ...r.couriers.filter((c) => c.paidIn).map((c) => ({ label: `Versé par ${c.name}`, value: fmtAr(c.paidIn), sub: true })),
     { label: 'Total à verser par les livreurs (compte à ce jour)', value: fmtAr(r.courierDue), strong: true },
   ] : [{ label: 'Aucune livraison', value: '—' }] });
   out.push({ title: 'Paiements reçus', lines: [
     { label: 'Espèces (boutique)', value: fmtAr(r.receipts.cash), sub: true },
-    ...MM.map((a) => ({ label: ACCOUNTS[a], value: fmtAr(r.receipts[a]), sub: true })),
+    ...MM().filter((a) => methodIds().includes(a) || r.receipts[a]).map((a) => ({ label: ACCOUNTS[a], value: fmtAr(r.receipts[a] || 0), sub: true })),
     ...(r.receipts.bank ? [{ label: 'Banque', value: fmtAr(r.receipts.bank), sub: true }] : []),
     { label: 'Versements des livreurs', value: fmtAr(t.fromCouriers), sub: true },
     { label: 'Total reçu', value: fmtAr(t.cashIn + t.mmIn + t.bankIn + t.fromCouriers), strong: true },
@@ -65,7 +67,7 @@ function common(r: Report, withProfit: boolean): Section[] {
   ] });
   out.push({ title: 'Soldes en fin de période', lines: [
     { label: 'Caisse espèces', value: fmtAr(r.balancesEnd.cash), strong: true },
-    ...MM.filter((a) => r.balancesEnd[a]).map((a) => ({ label: ACCOUNTS[a], value: fmtAr(r.balancesEnd[a]), sub: true })),
+    ...MM().filter((a) => r.balancesEnd[a]).map((a) => ({ label: ACCOUNTS[a], value: fmtAr(r.balancesEnd[a]), sub: true })),
     ...(r.balancesEnd.bank ? [{ label: 'Banque', value: fmtAr(r.balancesEnd.bank), sub: true }] : []),
     { label: 'Espèces attendues (caisse + à verser par les livreurs)', value: fmtAr(r.balancesEnd.cash + r.courierDue), strong: true },
   ] });

@@ -1,6 +1,7 @@
 // Tableau de la semaine (jours × pages, dépenses, reste — comme le cahier Excel « Recette et Dépense »),
 // versement de la semaine au patron (clôture) et historique des versements. Récapitulatif mensuel pour les rapports.
 import { useMemo, useState } from 'react';
+import { fmtMoney, curSym, moneyInputMode, roundMoney, parseMoney } from '../lib/currency';
 import { useCan } from '../lib/auth';
 import { useTable } from '../lib/db';
 import { fmtAr } from '../lib/catalog';
@@ -29,15 +30,15 @@ export function WeekGrid({ monday, withProfit }: { monday: string; withProfit: b
     const rows: R[] = [
       ...w.days.map((d) => ({ label: dayName(d), vals: g.sales[d], total: g.dayTotals[d], exp: g.expensesByDay[d], rest: g.dayTotals[d] - g.expensesByDay[d] })),
       { label: 'TOTAL', vals: g.pageTotals, total: g.salesTotal, exp: g.expensesTotal, rest: g.rest },
-      { label: 'Boost (Ar)', vals: Object.fromEntries(pages.map((p) => [p.id, boostAr(p.id)])), total: totalBoost, exp: 0, rest: 0 },
+      { label: `Boost (${curSym()})`, vals: Object.fromEntries(pages.map((p) => [p.id, boostAr(p.id)])), total: totalBoost, exp: 0, rest: 0 },
       ...(withProfit ? [{ label: 'Bénéfice (ventes − coût − boost)', vals: Object.fromEntries(pages.map((p) => [p.id, (g.pageTotals[p.id] ?? 0) - (g.cost[p.id] ?? 0) - boostAr(p.id)])), total: g.salesTotal - totalCost - totalBoost, exp: 0, rest: 0 }] : []),
     ];
     const cols: Col<R>[] = [
       { key: 'l', label: 'Jour', value: (r) => r.label, width: 30 },
-      ...pages.map((p) => ({ key: p.id, label: p.name, value: (r: R) => Math.round(r.vals[p.id] ?? 0), money: true, width: 16 })),
-      { key: 't', label: 'Total ventes', value: (r) => Math.round(r.total), money: true, width: 16 },
+      ...pages.map((p) => ({ key: p.id, label: p.name, value: (r: R) => roundMoney(r.vals[p.id] ?? 0), money: true, width: 16 })),
+      { key: 't', label: 'Total ventes', value: (r) => roundMoney(r.total), money: true, width: 16 },
       { key: 'e', label: 'Dépenses', value: (r) => r.exp, money: true, width: 14 },
-      { key: 'r', label: 'Reste', value: (r) => Math.round(r.rest), money: true, width: 16 },
+      { key: 'r', label: 'Reste', value: (r) => roundMoney(r.rest), money: true, width: 16 },
     ];
     type E = CashMove;
     const ecols: Col<E>[] = [
@@ -58,18 +59,18 @@ export function WeekGrid({ monday, withProfit }: { monday: string; withProfit: b
       {pages.length === 0 && !g.expensesTotal ? <p className="card-pad small muted">Aucune vente ni dépense cette semaine.</p> : (
         // Une ligne par page, une colonne par jour : tient dans l'écran quel que soit le nombre de pages (comme lire le cahier).
         <div className="table-wrap"><table className="table table-grid week-grid">
-          <thead><tr><th>Page</th>{w.days.map((d) => <th key={d} className="t-num" style={{ textTransform: 'capitalize' }}>{dayName(d)}</th>)}<th className="t-num">Total semaine</th>{totalBoost > 0 && <th className="t-num" title={`Boost converti à ${rate.toLocaleString('fr-FR')} Ar/$`}>Boost</th>}{withProfit && <th className="t-num" title="Ventes − coût des articles − boost">Bénéfice</th>}</tr></thead>
+          <thead><tr><th>Page</th>{w.days.map((d) => <th key={d} className="t-num" style={{ textTransform: 'capitalize' }}>{dayName(d)}</th>)}<th className="t-num">Total semaine</th>{totalBoost > 0 && <th className="t-num" title={`Boost converti à ${fmtMoney(rate)}/$`}>Boost</th>}{withProfit && <th className="t-num" title="Ventes − coût des articles − boost">Bénéfice</th>}</tr></thead>
           <tbody>
             {pages.map((p) => { const ben = (g.pageTotals[p.id] ?? 0) - (g.cost[p.id] ?? 0) - boostAr(p.id); return (
               <tr key={p.id}><td><strong>{p.name}</strong></td>
                 {w.days.map((d) => <td key={d} className="t-num">{cell(g.sales[d][p.id] ?? 0)}</td>)}
                 <td className="t-num"><strong>{fmtAr(g.pageTotals[p.id] ?? 0)}</strong></td>
-                {totalBoost > 0 && <td className="t-num muted">{cell(Math.round(boostAr(p.id)))}</td>}
-                {withProfit && <td className={`t-num ${ben < 0 ? 'neg' : 'pos'}`}>{fmtAr(Math.round(ben))}</td>}
+                {totalBoost > 0 && <td className="t-num muted">{cell(roundMoney(boostAr(p.id)))}</td>}
+                {withProfit && <td className={`t-num ${ben < 0 ? 'neg' : 'pos'}`}>{fmtAr((ben))}</td>}
               </tr>); })}
-            <tr className="t-total"><td>Total des ventes</td>{w.days.map((d) => <td key={d} className="t-num">{fmtAr(g.dayTotals[d])}</td>)}<td className="t-num">{fmtAr(g.salesTotal)}</td>{totalBoost > 0 && <td className="t-num">{fmtAr(Math.round(totalBoost))}</td>}{withProfit && <td className="t-num">{fmtAr(Math.round(g.salesTotal - totalCost - totalBoost))}</td>}</tr>
+            <tr className="t-total"><td>Total des ventes</td>{w.days.map((d) => <td key={d} className="t-num">{fmtAr(g.dayTotals[d])}</td>)}<td className="t-num">{fmtAr(g.salesTotal)}</td>{totalBoost > 0 && <td className="t-num">{fmtAr((totalBoost))}</td>}{withProfit && <td className="t-num">{fmtAr((g.salesTotal - totalCost - totalBoost))}</td>}</tr>
             <tr><td>Dépenses</td>{w.days.map((d) => <td key={d} className="t-num neg">{g.expensesByDay[d] ? `− ${fmtAr(g.expensesByDay[d])}` : '—'}</td>)}<td className="t-num neg">{g.expensesTotal ? `− ${fmtAr(g.expensesTotal)}` : '—'}</td>{totalBoost > 0 && <td />}{withProfit && <td className="t-num neg">{g.expensesTotal ? `− ${fmtAr(g.expensesTotal)}` : '—'}</td>}</tr>
-            <tr className="t-total"><td>Reste <span className="small muted">(ventes − dépenses)</span></td>{w.days.map((d) => <td key={d} className="t-num">{fmtAr(g.dayTotals[d] - g.expensesByDay[d])}</td>)}<td className="t-num"><strong>{fmtAr(g.rest)}</strong></td>{totalBoost > 0 && <td />}{withProfit && <td className="t-num" title="Bénéfice net : ventes − coût − boost − dépenses"><strong>{fmtAr(Math.round(g.salesTotal - totalCost - totalBoost - g.expensesTotal))}</strong></td>}</tr>
+            <tr className="t-total"><td>Reste <span className="small muted">(ventes − dépenses)</span></td>{w.days.map((d) => <td key={d} className="t-num">{fmtAr(g.dayTotals[d] - g.expensesByDay[d])}</td>)}<td className="t-num"><strong>{fmtAr(g.rest)}</strong></td>{totalBoost > 0 && <td />}{withProfit && <td className="t-num" title="Bénéfice net : ventes − coût − boost − dépenses"><strong>{fmtAr((g.salesTotal - totalCost - totalBoost - g.expensesTotal))}</strong></td>}</tr>
           </tbody>
         </table></div>
       )}
@@ -118,12 +119,12 @@ export function PayoutCard({ monday }: { monday: string }) {
 
 function PayoutModal({ monday, g, onClose }: { monday: string; g: Grid; onClose: () => void }) {
   const w = weekOf(monday);
-  const [amount, setAmount] = useState(String(Math.max(0, Math.round(g.rest))));
+  const [amount, setAmount] = useState(String(Math.max(0, roundMoney(g.rest))));
   const [account, setAccount] = useState<AccountId>('cash');
   const [note, setNote] = useState('');
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
-  const n = Number(amount.replace(/\D/g, '')) || 0;
+  const n = parseMoney(amount) || 0;
   const gap = n - g.rest;
   const pages = g.pages.filter((p) => g.pageTotals[p.id]);
   return (
@@ -160,7 +161,7 @@ function PayoutModal({ monday, g, onClose }: { monday: string; g: Grid; onClose:
           <strong className="num">{fmtAr(g.rest)}</strong>
           <span className="small muted">{fmtAr(g.salesTotal)} − {fmtAr(g.expensesTotal)}</span>
         </div>
-        <TextField label="Montant réellement remis au patron (Ar)" value={amount} onChange={setAmount} inputMode="numeric" hint={gap ? <span className={gap < 0 ? 'neg' : 'pos'}>Écart : {gap > 0 ? '+' : ''}{fmtAr(gap)} — expliquez-le dans la remarque.</span> : 'Identique au montant à verser.'} />
+        <TextField label={`Montant réellement remis au patron (${curSym()})`} value={amount} onChange={setAmount} inputMode={moneyInputMode()} hint={gap ? <span className={gap < 0 ? 'neg' : 'pos'}>Écart : {gap > 0 ? '+' : ''}{fmtAr(gap)} — expliquez-le dans la remarque.</span> : 'Identique au montant à verser.'} />
         <SelectField label="Argent sorti de" value={account} onChange={(v) => setAccount(v as AccountId)} options={Object.entries(ACCOUNTS).map(([value, label]) => ({ value, label }))} />
         <TextField label={gap ? 'Remarque (en cas d’écart)' : 'Remarque (facultatif)'} required={!!gap} value={note} onChange={setNote} />
         <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> Je confirme avoir vérifié le détail et remis {fmtAr(n)} au patron. Après validation, la semaine est clôturée : plus aucune vente, livraison ou dépense ne peut y être ajoutée ou supprimée.</label>
@@ -236,24 +237,24 @@ export function MonthlyRecap() {
   const { rows, pages } = monthly(n, today());
   const cols: Col<(typeof rows)[number]>[] = [
     { key: 'm', label: 'Mois', value: (r) => r.label, width: 18 },
-    ...pages.map((p) => ({ key: p.id, label: p.name, value: (r: (typeof rows)[number]) => Math.round(r.pages[p.id] ?? 0), money: true, width: 15 })),
-    { key: 'ca', label: 'CA réalisé', value: (r) => Math.round(r.sales), money: true, width: 16 },
+    ...pages.map((p) => ({ key: p.id, label: p.name, value: (r: (typeof rows)[number]) => roundMoney(r.pages[p.id] ?? 0), money: true, width: 15 })),
+    { key: 'ca', label: 'CA réalisé', value: (r) => roundMoney(r.sales), money: true, width: 16 },
     { key: 'dep', label: 'Dépenses', value: (r) => r.expenses, money: true, width: 14 },
-    { key: 'rest', label: 'Reste', value: (r) => Math.round(r.rest), money: true, width: 16 },
+    { key: 'rest', label: 'Reste', value: (r) => roundMoney(r.rest), money: true, width: 16 },
     { key: 'paid', label: 'Versé au patron', value: (r) => r.paid, money: true, width: 16 },
-    { key: 'boost', label: 'Boost (Ar)', value: (r) => Math.round(r.boostAr), money: true, width: 14 },
-    ...(withProfit ? [{ key: 'ben', label: 'Bénéfice net estimé', value: (r: (typeof rows)[number]) => Math.round(r.profit), money: true, width: 18 }] : []),
+    { key: 'boost', label: `Boost (${curSym()})`, value: (r) => roundMoney(r.boostAr), money: true, width: 14 },
+    ...(withProfit ? [{ key: 'ben', label: 'Bénéfice net estimé', value: (r: (typeof rows)[number]) => roundMoney(r.profit), money: true, width: 18 }] : []),
   ];
   const sum = (k: 'sales' | 'expenses' | 'rest' | 'paid' | 'boostAr' | 'profit') => rows.reduce((t, r) => t + r[k], 0);
   return (
     <>
       <div className="stat-grid">
-        <div className="card stat"><span className="small muted">CA réalisé ({n} mois)</span><strong className="stat-value num">{fmtAr(Math.round(sum('sales')))}</strong></div>
+        <div className="card stat"><span className="small muted">CA réalisé ({n} mois)</span><strong className="stat-value num">{fmtAr((sum('sales')))}</strong></div>
         <div className="card stat"><span className="small muted">Dépenses</span><strong className="stat-value num neg">{fmtAr(sum('expenses'))}</strong></div>
-        <div className="card stat stat-strong"><span className="small muted">Reste</span><strong className="stat-value num">{fmtAr(Math.round(sum('rest')))}</strong></div>
+        <div className="card stat stat-strong"><span className="small muted">Reste</span><strong className="stat-value num">{fmtAr((sum('rest')))}</strong></div>
         <div className="card stat"><span className="small muted">Versé au patron</span><strong className="stat-value num">{fmtAr(sum('paid'))}</strong></div>
-        <div className="card stat"><span className="small muted">Boost</span><strong className="stat-value num">{fmtAr(Math.round(sum('boostAr')))}</strong></div>
-        {withProfit && <div className="card stat"><span className="small muted">Bénéfice net estimé</span><strong className={`stat-value num ${sum('profit') < 0 ? 'neg' : ''}`}>{fmtAr(Math.round(sum('profit')))}</strong></div>}
+        <div className="card stat"><span className="small muted">Boost</span><strong className="stat-value num">{fmtAr((sum('boostAr')))}</strong></div>
+        {withProfit && <div className="card stat"><span className="small muted">Bénéfice net estimé</span><strong className={`stat-value num ${sum('profit') < 0 ? 'neg' : ''}`}>{fmtAr((sum('profit')))}</strong></div>}
       </div>
       <div className="card card-flush">
         <div className="card-pad row-between">

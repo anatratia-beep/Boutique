@@ -2,6 +2,7 @@
 // cumulées de chaque boost ; nouvelles conversations du jour, total, CA de la page et CA par conversation ;
 // pause / reprise / suppression des boosts, ordre par glisser-déposer ; analyse des performances.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { curSym, roundMoney } from '../lib/currency';
 import { useCan } from '../lib/auth';
 import { setMeta, useMeta, useTable } from '../lib/db';
 import { fmtAr, fmtNum, parseNum, todayYmd } from '../lib/catalog';
@@ -185,7 +186,7 @@ function PageTable({ pageId, days }: { pageId: string; days: string[] }) {
       ...boosts.map((b) => ({ l: `${b.slot}. ${b.label || 'Boost'} (nouveaux)`, v: stats.map((s) => s.perBoost.get(b.id)), t: stats.reduce((t, s) => t + (s.perBoost.get(b.id) ?? 0), 0) })),
       { l: 'Total nouvelles conversations', v: stats.map((s) => s.theo), t: msgW },
       { l: 'Messages réels comptés', v: stats.map((s) => s.real), t: realW },
-      { l: "Chiffre d'affaires (Ar)", v: shownDays.map((d) => Math.round(rev.get(d) ?? 0)), t: Math.round(revW) },
+      { l: `Chiffre d'affaires (${curSym()})`, v: shownDays.map((d) => Math.round(rev.get(d) ?? 0)), t: Math.round(revW) },
       { l: 'Commandes en ligne', v: stats.map((s) => s.orders), t: ordersW },
       { l: 'Dépense ($)', v: stats.map((s) => Math.round(s.spend * 100) / 100), t: Math.round(spendW * 100) / 100 },
     ],
@@ -371,8 +372,8 @@ function AllPagesTable({ pageIds, days, onPick }: { pageIds: string[]; days: str
     { key: 'n', label: 'Page', value: (r) => r.name, render: (r) => <button type="button" className="link-btn" onClick={() => onPick(r.id)}>{r.name}</button> },
     { key: 'a', label: 'Boosts actifs', value: (r) => r.active, num: true, total: true },
     { key: 'm', label: 'Conversations', value: (r) => r.msgs, num: true, total: true },
-    { key: 'c', label: 'Chiffre d’affaires', value: (r) => Math.round(r.revenue), money: true, num: true, total: true },
-    { key: 'cm', label: 'CA / conversation', value: (r) => (r.msgs ? Math.round(r.revenue / r.msgs) : 0), money: true, num: true, total: (rs) => { const m = rs.reduce((t, r) => t + r.msgs, 0); return m ? fmtAr(rs.reduce((t, r) => t + r.revenue, 0) / m) : '—'; } },
+    { key: 'c', label: 'Chiffre d’affaires', value: (r) => roundMoney(r.revenue), money: true, num: true, total: true },
+    { key: 'cm', label: 'CA / conversation', value: (r) => (r.msgs ? roundMoney(r.revenue / r.msgs) : 0), money: true, num: true, total: (rs) => { const m = rs.reduce((t, r) => t + r.msgs, 0); return m ? fmtAr(rs.reduce((t, r) => t + r.revenue, 0) / m) : '—'; } },
     { key: 'o', label: 'Commandes', value: (r) => r.orders, num: true, total: true },
     { key: 's', label: 'Dépense ($)', value: (r) => Math.round(r.spend * 100) / 100, num: true, total: true },
     { key: 'sc', label: 'Coût / conversation', value: (r) => (r.msgs ? Math.round((r.spend / r.msgs) * 100) / 100 : 0), num: true, render: (r) => (r.msgs ? usd(r.spend / r.msgs) : '—') },

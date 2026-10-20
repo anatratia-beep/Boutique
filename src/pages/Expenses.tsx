@@ -2,12 +2,13 @@
 // catégorie et type, totaux, export Excel ; charges fixes répétées (rappel le jour et à l'heure prévus) ;
 // catégories et types de dépenses (aussi ajoutables pendant la saisie).
 import { useMemo, useRef, useState } from 'react';
+import { fmtMoney, curSym, moneyInputMode } from '../lib/currency';
 import { audit, useCan } from '../lib/auth';
 import { all, save, useTable } from '../lib/db';
 import { fmtAr, matchQuery, parseNum, parseAr } from '../lib/catalog';
 import { compressPhoto } from '../lib/images';
 import {
-  ACCOUNTS, ACCOUNT_IDS, FREQS, RHYTHMS, WEEKDAYS, addMove, atFor, catHabit, confirmRecurring, dayOf, deleteMove, dueRecurring, habitText, nextOccurrence, recurringText, skipRecurring, today, typeForCat,
+  ACCOUNTS, accountIds, FREQS, RHYTHMS, WEEKDAYS, addMove, atFor, catHabit, confirmRecurring, dayOf, deleteMove, dueRecurring, habitText, nextOccurrence, recurringText, skipRecurring, today, typeForCat,
   type AccountId, type CashMove, type FinanceCategory, type Freq, type Recurring, type Rhythm,
 } from '../lib/money';
 import { closedBy } from '../lib/closed';
@@ -21,7 +22,7 @@ const TABS = [
   { key: 'fixes', label: 'Charges fixes' },
   { key: 'reglages', label: 'Catégories et types' },
 ];
-const accountOptions = ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }));
+const accountOptions = () => accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }));
 const NEW = '__new';
 
 export function ExpensesPage() {
@@ -85,8 +86,8 @@ export function PayDue({ d, onClose }: { d: ReturnType<typeof dueRecurring>[numb
       <div className="stack">
         <p className="small muted">Échéance du {fmtDate(d.date)} · {recurringText(d.r)}</p>
         <div className="grid-2">
-          <TextField label="Montant payé (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" />
-          <SelectField label="Payé depuis" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions} />
+          <TextField label={`Montant payé (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} />
+          <SelectField label="Payé depuis" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions()} />
         </div>
       </div>
     </Modal>
@@ -122,8 +123,8 @@ function HabitFields({ h, set, rec }: { h: Habit; set: (h: Habit) => void; rec?:
         : <>
           <Toggle checked={h.remind} onChange={(v) => up({ remind: v })} label="Me rappeler de payer (charge fixe)" />
           {h.remind && <div className="grid-2">
-            <TextField label="Montant habituel (Ar)" required value={h.amount} onChange={(v) => up({ amount: v })} inputMode="numeric" />
-            <SelectField label="Payé depuis" value={h.account} onChange={(v) => up({ account: v as AccountId })} options={accountOptions} />
+            <TextField label={`Montant habituel (${curSym()})`} required value={h.amount} onChange={(v) => up({ amount: v })} inputMode={moneyInputMode()} />
+            <SelectField label="Payé depuis" value={h.account} onChange={(v) => up({ account: v as AccountId })} options={accountOptions()} />
             {h.rhythm === 'weekly' && <SelectField label="Jour de la semaine" value={h.weekday} onChange={(v) => up({ weekday: v })} options={WEEKDAYS.map((w, i) => ({ value: String(i), label: w }))} />}
             {(h.rhythm === 'monthly' || h.rhythm === 'yearly') && <TextField label="Jour du mois" value={h.day} onChange={(v) => up({ day: v })} inputMode="numeric" />}
             {h.rhythm === 'yearly' && <SelectField label="Mois" value={h.month} onChange={(v) => up({ month: v })} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2026, i, 1).toLocaleDateString('fr-FR', { month: 'long' }) }))} />}
@@ -140,7 +141,7 @@ async function saveExpenseCat(name: string, h: Habit, existing?: FinanceCategory
   if (h.rhythm !== 'occasional' && h.fixed && h.remind && !hasRec && parseNum(h.amount)) {
     await save('recurring', { kind: 'expense', label: name, categoryId: c.id, typeId: 'et-fixe', account: h.account, amount: parseNum(h.amount)!, freq: h.rhythm as Freq,
       day: Math.min(31, Math.max(1, Number(h.day) || 1)), weekday: Number(h.weekday), month: Number(h.month), time: '08:00', startMonth: today().slice(0, 7), active: true });
-    await audit('Charge fixe ajoutée', `${name} : ${parseNum(h.amount)} Ar, ${FREQS[h.rhythm as Freq].toLowerCase()}`);
+    await audit('Charge fixe ajoutée', `${name} : ${fmtMoney(parseNum(h.amount))}, ${FREQS[h.rhythm as Freq].toLowerCase()}`);
   }
   await audit(existing ? 'Catégorie de dépense modifiée' : 'Catégorie de dépense ajoutée', `${name} — ${habitText(c as FinanceCategory)}`);
   return c.id;
@@ -233,9 +234,9 @@ export function ExpenseForm({ onClose }: { onClose: () => void }) {
         {due.length > 0 && <div className="notice notice-warn"><Icon name="bell" /><span style={{ flex: 1 }}>« {due[0].r.label} » du {fmtDate(due[0].date)} ({fmtAr(due[0].r.amount)}) est à payer. Payez cette échéance pour qu’elle ne soit plus rappelée.</span><Button onClick={() => setPay(due[0])}>Payer l’échéance</Button></div>}
         {!due.length && sameDay && <div className="notice notice-warn"><Icon name="alert" /><span>Déjà payée pour cette période : {fmtAr(-last!.amount)} le {fmtDate(dayOf(last!.at))}. Vérifiez que ce n’est pas un doublon.</span></div>}
         <div className="grid-2">
-          <TextField label="Montant (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" hint={last && !rec ? <button type="button" className="link-btn" onClick={() => setAmount(String(-last.amount))}>Dernière fois : {fmtAr(-last.amount)} le {fmtDate(dayOf(last.at))}</button> : undefined} />
+          <TextField label={`Montant (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} hint={last && !rec ? <button type="button" className="link-btn" onClick={() => setAmount(String(-last.amount))}>Dernière fois : {fmtAr(-last.amount)} le {fmtDate(dayOf(last.at))}</button> : undefined} />
           <TextField label="Date" type="date" value={date} max={today()} onChange={setDate} />
-          <SelectField label="Payé depuis" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions} />
+          <SelectField label="Payé depuis" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions()} />
           <TextField label="Description (facultatif)" value={label} onChange={setLabel} placeholder={c ? `Par défaut : ${c.name}` : 'Ex. Taxi livraison Analakely'} />
         </div>
         <TextField label="Note (facultatif)" value={note} onChange={setNote} />
@@ -363,7 +364,7 @@ function FixedForm({ rec, onClose }: { rec?: Recurring; onClose: () => void }) {
       footer={<><Button variant="ghost" onClick={onClose}>Annuler</Button><Button disabled={!ok} onClick={async () => {
         await save('recurring', { ...(rec ? { id: rec.id } : {}), kind, label: label.trim(), categoryId: cat, typeId: kind === 'expense' ? type : undefined, account, amount: parseAr(amount)!, freq,
           day: Math.min(31, Math.max(1, Number(day) || 1)), weekday: Number(weekday), month: Number(month), time: time || undefined, startMonth: start, active });
-        await audit(rec ? 'Charge fixe modifiée' : 'Charge fixe ajoutée', `${label.trim()} : ${parseAr(amount)} Ar, ${FREQS[freq].toLowerCase()}`);
+        await audit(rec ? 'Charge fixe modifiée' : 'Charge fixe ajoutée', `${label.trim()} : ${fmtMoney(parseAr(amount))}, ${FREQS[freq].toLowerCase()}`);
         toast('Charge fixe enregistrée'); onClose();
       }}>Enregistrer</Button></>}>
       <div className="stack">
@@ -372,8 +373,8 @@ function FixedForm({ rec, onClose }: { rec?: Recurring; onClose: () => void }) {
         <div className="grid-2">
           {kind === 'expense' ? <PickOrAdd label="Catégorie" kind="expense" required value={cat} onChange={setCat} /> : <SelectField label="Catégorie" required value={cat} onChange={setCat} options={incomeCats.map((c) => ({ value: c.id, label: c.name }))} />}
           {kind === 'expense' && <PickOrAdd label="Type" kind="etype" value={type} onChange={setType} />}
-          <TextField label="Montant habituel (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" />
-          <SelectField label="Compte" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions} />
+          <TextField label={`Montant habituel (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} />
+          <SelectField label="Compte" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions()} />
           <SelectField label="Répétition" value={freq} onChange={(v) => setFreq(v as Freq)} options={Object.entries(FREQS).map(([value, label]) => ({ value, label }))} />
           {freq === 'weekly' && <SelectField label="Jour de la semaine" value={weekday} onChange={setWeekday} options={WEEKDAYS.map((w, i) => ({ value: String(i), label: w }))} />}
           {(freq === 'monthly' || freq === 'yearly') && <TextField label="Jour du mois" value={day} onChange={setDay} inputMode="numeric" />}

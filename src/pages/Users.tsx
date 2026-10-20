@@ -1,5 +1,6 @@
 // Gestion des utilisateurs : seul l'admin crée les comptes et attribue les rôles.
 import { useMemo, useState } from 'react';
+import { roundMoney } from '../lib/currency';
 import { userLimit } from '../lib/license';
 import { audit, normUsername, removeUser, roleOf, setPassword, SUPERADMIN_ID, useCurrentUser, type Role, type User, useMe } from '../lib/auth';
 import { hashSecret } from '../lib/crypto';
@@ -124,7 +125,7 @@ export function UsersPage() {
 function DeleteUser({ u, onClose }: { u: User; onClose: () => void }) {
   useTable('orders'); useTable('cashMoves'); useTable('handovers');
   const d = sellerDay(u, today());
-  const owes = !d.handover && Math.round(d.toPay) > 0;
+  const owes = !d.handover && roundMoney(d.toPay) > 0;
   return (
     <Confirm title={`Supprimer ${u.fullName} ?`} danger confirmLabel="Supprimer le compte" typeToConfirm="SUPPRIMER" onClose={onClose}
       message={<div className="stack-s">

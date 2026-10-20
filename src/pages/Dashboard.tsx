@@ -1,5 +1,7 @@
 // Accueil : tableau de bord adapté au rôle (chiffres de la période, trésorerie, stock, livreurs, meilleurs articles).
 import { useMemo, useState } from 'react';
+import { payMethods } from '../lib/paymethods';
+import { roundMoney } from '../lib/currency';
 import { setMeta } from '../lib/db';
 import { fmtAr, fmtNum, productStock, type Product } from '../lib/catalog';
 import { bucketOf, type Prospect } from '../lib/prospects';
@@ -9,7 +11,7 @@ import type { Category } from '../lib/catalog';
 import { OrderRow } from './Orders';
 import { anomalies, boostRoi, coverage, sameDayLastWeek, targets } from '../lib/insights';
 import { messagesByPage } from '../lib/boosts';
-import { addDays } from '../lib/money';
+import { addDays, accountIds, allAccountIds } from '../lib/money';
 import { ACCOUNTS, balances, courierBalance, today as todayYmd, type AccountId } from '../lib/money';
 import { bucketFor, groupBy, kpis, pendingPurchases, previousPeriod, productLabel, salesLedger, series, stockValue, dormant } from '../lib/analytics';
 import { PeriodPicker, defaultPeriod, type Period } from '../ui/period';
@@ -187,7 +189,7 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
   const bucket = b0 === 'hour' ? 'day' : b0; // au minimum par jour (le détail par heure n'est plus affiché)
   const pts = series(lines, from, to, bucket);
   const top = groupBy(lines, (l) => l.productId, productLabel).slice(0, 5);
-  const byPage = groupBy(lines, (l) => rootOf(l.categoryId) || '_', (id) => ({ label: id === '_' ? 'Sans page' : get<Category>('categories', id)?.name ?? '?' })).filter((g) => Math.round(g.revenue) !== 0).sort((a, b) => b.revenue - a.revenue);
+  const byPage = groupBy(lines, (l) => rootOf(l.categoryId) || '_', (id) => ({ label: id === '_' ? 'Sans page' : get<Category>('categories', id)?.name ?? '?' })).filter((g) => roundMoney(g.revenue) !== 0).sort((a, b) => b.revenue - a.revenue);
   const readings = useTable('boostReadings');
   const msgs = useMemo(() => messagesByPage(from, to), [from, to, readings]);
   const msgTotal = [...msgs.values()].reduce((t, n) => t + n, 0);
@@ -270,7 +272,7 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
           <a className="card stack-s" href="#/tresorerie" style={{ textDecoration: 'none', color: 'inherit' }}>
             <h2>Trésorerie</h2>
             <table className="kv-table"><tbody>
-              {(['cash', 'mvola', 'orange', 'airtel', 'bank'] as AccountId[]).filter((a) => a !== 'bank' || bal.bank).map((a) => <tr key={a}><td>{ACCOUNTS[a]}</td><td className={bal[a] < 0 ? 'neg' : ''}>{fmtAr(bal[a])}</td></tr>)}
+              {allAccountIds().filter((a) => (a !== 'bank' && accountIds().includes(a)) || bal[a]).map((a) => <tr key={a}><td>{ACCOUNTS[a]}</td><td className={bal[a] < 0 ? 'neg' : ''}>{fmtAr(bal[a] || 0)}</td></tr>)}
               <tr><td>À verser par les livreurs</td><td>{fmtAr(courierDue)}</td></tr>
               <tr className="total"><td>Total</td><td>{fmtAr(Object.values(bal).reduce((t, v) => t + v, 0) + courierDue)}</td></tr>
             </tbody></table>
@@ -334,15 +336,14 @@ function SituationCard({ from: f, to: t }: { from?: string; to?: string }) {
   const from = f ?? own.from ?? '2000-01-01', to = t ?? own.to ?? todayYmd();
   const sit = useMemo(() => situation(from, to, scope.strict ? scope.pages : undefined), [from, to, scope.strict, scope.pages.join(), ords]);
   const T = sit.total;
+  // Moyens de paiement affichés : ceux de la boutique, et un moyen désactivé s'il a encore des montants sur la période.
+  const pms = payMethods().filter((m) => m.active || m.id === 'cash' || T.pay[m.id]);
   const cols: { k: string; l: string; v: (r: PageSit) => number; money?: boolean; n?: (r: PageSit) => number; cls?: string; strong?: boolean; minus?: boolean }[] = [
     { k: 'gross', l: 'Total commandes', v: (r) => r.gross, money: true },
     { k: 'cancel', l: 'Annulé', v: (r) => r.cancelled, money: true, n: (r) => r.cancelledN, minus: true },
     { k: 'rep', l: 'Reporté', v: (r) => r.reported, money: true, n: (r) => r.reportedN, minus: true },
     { k: 'sales', l: 'Ventes', v: (r) => r.sales, money: true, strong: true },
-    { k: 'cash', l: 'Espèces', v: (r) => r.pay.cash, money: true },
-    { k: 'mvola', l: 'MVola', v: (r) => r.pay.mvola, money: true },
-    { k: 'orange', l: 'Orange Money', v: (r) => r.pay.orange, money: true },
-    { k: 'airtel', l: 'Airtel Money', v: (r) => r.pay.airtel, money: true },
+    ...pms.map((m) => ({ k: 'pm_' + m.id, l: m.label, v: (r: PageSit) => r.pay[m.id] || 0, money: true })),
     { k: 'rest', l: 'Reste à payer', v: (r) => r.rest, money: true, n: (r) => r.restN, cls: 'neg' },
     { k: 'exch', l: 'dont échange', v: (r) => r.exchange, money: true, n: (r) => r.exchangeN },
   ];
@@ -357,13 +358,10 @@ function SituationCard({ from: f, to: t }: { from?: string; to?: string }) {
           <a className="card stat" href="#/commandes/annulees" style={{ textDecoration: 'none', color: 'inherit' }}><span className="small muted">− Annulé</span><strong className="stat-value num">{fmtAr(T.cancelled)}</strong><span className="small muted">{T.cancelledN} commande(s)</span></a>
           <a className="card stat" href="#/commandes/attente" style={{ textDecoration: 'none', color: 'inherit' }}><span className="small muted">− Reporté</span><strong className="stat-value num">{fmtAr(T.reported)}</strong><span className="small muted">{T.reportedN} commande(s), passées à leur nouvelle date</span></a>
           <div className="card stat stat-strong"><span className="small muted">= Ventes</span><strong className="stat-value num">{fmtAr(T.sales)}</strong><span className="small muted">{fmtNum(T.qty)} produit(s) · {T.orders} vente(s){T.exchange ? ` · dont échange ${fmtAr(T.exchange)}` : ''}</span></div>
-          <div className="card stat"><span className="small muted">Espèces</span><strong className="stat-value num">{fmtAr(T.pay.cash)}</strong></div>
-          <div className="card stat"><span className="small muted">MVola</span><strong className="stat-value num">{fmtAr(T.pay.mvola)}</strong></div>
-          <div className="card stat"><span className="small muted">Orange Money</span><strong className="stat-value num">{fmtAr(T.pay.orange)}</strong></div>
-          <div className="card stat"><span className="small muted">Airtel Money</span><strong className="stat-value num">{fmtAr(T.pay.airtel)}</strong></div>
+          {pms.map((m) => <div key={m.id} className="card stat"><span className="small muted">{m.label}</span><strong className="stat-value num">{fmtAr(T.pay[m.id] || 0)}</strong></div>)}
           <a className="card stat" href="#/commandes/terminees" style={{ textDecoration: 'none', color: 'inherit' }}><span className="small muted">Reste à payer</span><strong className={`stat-value num ${T.rest ? 'neg' : ''}`}>{fmtAr(T.rest)}</strong><span className="small muted">{T.restN} commande(s)</span></a>
         </div>
-        <p className="small muted" style={{ margin: 0 }}>Total commandes − annulé − reporté = <strong>ventes</strong> ; ventes = espèces + MVola + Orange Money + Airtel Money + reste à payer. Une livraison reportée passe à sa nouvelle date ; un échange pris par le client compte dans les ventes, un échange non pris est retiré. Une commande avec des articles de plusieurs pages est répartie selon la valeur de chaque page.</p>
+        <p className="small muted" style={{ margin: 0 }}>Total commandes − annulé − reporté = <strong>ventes</strong> ; ventes = {pms.map((m) => m.label).join(' + ')} + reste à payer. Une livraison reportée passe à sa nouvelle date ; un échange pris par le client compte dans les ventes, un échange non pris est retiré. Une commande avec des articles de plusieurs pages est répartie selon la valeur de chaque page.</p>
       </div>
       {sit.rows.length === 0 ? <p className="card-pad small muted">Aucune activité sur cette période.</p> : (
         <div className="table-wrap"><table className="table table-grid sit-table">

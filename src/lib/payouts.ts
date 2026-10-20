@@ -6,6 +6,7 @@
 // unique par semaine : impossible de la verser deux fois, même depuis deux appareils), le versement est tracé
 // (période, montant, date, gérant, appareil) et gardé dans l'historique.
 import { all, get, getMeta, save, type BaseRecord } from './db';
+import { fmtMoney, curSym } from './currency';
 import { audit, currentUser } from './auth';
 import { salesLedger } from './analytics';
 import { rootOf } from './scope';
@@ -84,7 +85,7 @@ export async function validatePayout(monday: string, amount: number, account: Ac
     perPage: g.pages.map((p) => ({ pageId: p.id, name: p.name, sales: g.pageTotals[p.id] ?? 0 })).filter((p) => p.sales),
     expenseIds: g.expenseMoves.map((m) => m.id), moveId: mv.id, status: 'paid', cancelledBy: undefined, cancelledAt: undefined, cancelReason: undefined,
   } as Partial<Payout>);
-  await audit('Versement de la semaine', `${label} : ${amount.toLocaleString('fr-FR')} Ar remis (attendu ${expected.toLocaleString('fr-FR')} Ar${amount !== expected ? `, écart ${(amount - expected).toLocaleString('fr-FR')} Ar` : ''})`, 'payouts', payoutId(monday));
+  await audit('Versement de la semaine', `${label} : ${fmtMoney(amount)} remis (attendu ${fmtMoney(expected)}${amount !== expected ? `, écart ${fmtMoney((amount - expected))}` : ''})`, 'payouts', payoutId(monday));
 }
 
 /** Annule un versement (erreur de saisie) : la semaine est rouverte, l'annulation reste dans l'historique. */
@@ -92,7 +93,7 @@ export async function cancelPayout(p: Payout, reason: string) {
   const u = currentUser();
   if (p.moveId) await save('cashMoves', { id: p.moveId, deleted: true });
   await save('payouts', { id: p.id, status: 'cancelled', cancelledBy: u?.fullName, cancelledAt: new Date().toISOString(), cancelReason: reason });
-  await audit('Versement annulé', `Semaine du ${fr(p.weekStart)} au ${fr(p.weekEnd)} : ${p.amount.toLocaleString('fr-FR')} Ar — ${reason}`, 'payouts', p.id);
+  await audit('Versement annulé', `Semaine du ${fr(p.weekStart)} au ${fr(p.weekEnd)} : ${fmtMoney(p.amount)} — ${reason}`, 'payouts', p.id);
 }
 
 export const catName = (id?: string) => (id ? get<FinanceCategory>('financeCategories', id)?.name : undefined);
@@ -158,7 +159,7 @@ export function dayRecap(ymd: string, only?: { pages: string[]; userName?: strin
   }
   return { g, pages, shop, online, shopCount: shopN.size, onlineCount: onlineN.size, sales: g.salesTotal, expenses: g.expensesTotal, net: g.rest, mine: false };
 }
-const ar = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} Ar`;
+const ar = (n: number) => `${fmtMoney(n)}`;
 export function dayRecapText(ymd: string, companyName: string, sender?: string, only?: { pages: string[]; userName?: string }, withExpenses = true) {
   const r = dayRecap(ymd, only);
   const date = new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -212,6 +213,6 @@ export function dayReview(ymd: string, pages?: string[]) {
   if (ready.length) warnings.push(`${ready.length} commande(s) confirmée(s) ou prête(s) pas encore remise(s) au livreur : elles ne sont pas dans les ventes du jour.`);
   if (list.some((r) => r.pages.includes('Sans page'))) warnings.push('Des ventes concernent un article sans page (catégorie) : elles sont comptées dans « Sans page ».');
   const zero = list.filter((r) => r.kind !== 'return' && r.amount <= 0);
-  if (zero.length) warnings.push(`${zero.length} vente(s) à 0 Ar ou moins : vérifiez les prix ou les remises (${zero.map((r) => r.number).join(', ')}).`);
+  if (zero.length) warnings.push(`${zero.length} vente(s) à 0 ${curSym()} ou moins : vérifiez les prix ou les remises (${zero.map((r) => r.number).join(', ')}).`);
   return { rows: list, warnings };
 }

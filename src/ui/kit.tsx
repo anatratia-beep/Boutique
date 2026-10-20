@@ -1,5 +1,6 @@
 // Composants d'interface réutilisables : boutons, champs, fenêtres, notifications, navigation.
 import { useCallback, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { fmtMoney, curSym } from '../lib/currency';
 import { Icon, type IconName } from './icons';
 
 // ---- Navigation (adresse après le #, compatible GitHub Pages et hors ligne) ----
@@ -225,11 +226,11 @@ export function MultiPick({ label, values, onChange, options, max = 6, empty = '
 /** Remise en Ar ou en % : le montant en Ar calculé s'affiche dessous. */
 export function DiscountField({ value, unit, onChange, onUnit, amount }: { value: string; unit: 'ar' | 'pct'; onChange: (v: string) => void; onUnit: (u: 'ar' | 'pct') => void; amount: number }) {
   return (
-    <Field label="Remise" hint={unit === 'pct' && amount ? `= ${amount.toLocaleString('fr-FR')} Ar` : undefined}>
+    <Field label="Remise" hint={unit === 'pct' && amount ? `= ${fmtMoney(amount)}` : undefined}>
       {(id) => (
         <div className="input-with-unit">
           <input id={id} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder="0" />
-          <select aria-label="Unité de la remise" value={unit} onChange={(e) => onUnit(e.target.value as 'ar' | 'pct')}><option value="ar">Ar</option><option value="pct">%</option></select>
+          <select aria-label="Unité de la remise" value={unit} onChange={(e) => onUnit(e.target.value as 'ar' | 'pct')}><option value="ar">{curSym()}</option><option value="pct">%</option></select>
         </div>
       )}
     </Field>

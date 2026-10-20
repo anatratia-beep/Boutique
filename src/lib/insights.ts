@@ -1,6 +1,7 @@
 // Aides à la décision : objectifs de vente, fin de stock prévue, rentabilité des boosts par page,
 // comparaison avec le même jour de la semaine dernière, anomalies à vérifier, transformation des clients à suivre.
 import { all, get } from './db';
+import { fmtMoney } from './currency';
 import { productVariants, stockOf, variantCost, type Category, type Product, type Variant } from './catalog';
 import { kpis, salesLedger } from './analytics';
 import { rootOf } from './scope';
@@ -75,15 +76,15 @@ export function anomalies(from: string, to: string): Anomaly[] {
       if (c > 0 && l.unitPrice > 0 && l.unitPrice < c && !seen.has(o.id)) {
         seen.add(o.id);
         const p = get<Product>('products', v!.productId);
-        out.push({ kind: 'below_cost', text: `${o.number} : ${p?.name ?? '?'} vendu ${l.unitPrice.toLocaleString('fr-FR')} Ar, en dessous du prix de revient (${Math.round(c).toLocaleString('fr-FR')} Ar)`, href: `#/commandes/${o.id}` });
+        out.push({ kind: 'below_cost', text: `${o.number} : ${p?.name ?? '?'} vendu ${fmtMoney(l.unitPrice)}, en dessous du prix de revient (${fmtMoney(c)})`, href: `#/commandes/${o.id}` });
       }
     }
     const items = isWalkIn(o) ? keptTotal(o) : itemsTotal(o);
-    if (o.discount && items > 0 && o.discount / items > 0.2) out.push({ kind: 'discount', text: `${o.number} : remise de ${Math.round((o.discount / items) * 100)} % (${o.discount.toLocaleString('fr-FR')} Ar)`, href: `#/commandes/${o.id}`, amount: o.discount });
+    if (o.discount && items > 0 && o.discount / items > 0.2) out.push({ kind: 'discount', text: `${o.number} : remise de ${Math.round((o.discount / items) * 100)} % (${fmtMoney(o.discount)})`, href: `#/commandes/${o.id}`, amount: o.discount });
   }
   for (const p of all<Payout>('payouts')) {
     if (p.status !== 'paid' || !p.gap || p.weekStart > to || p.weekEnd < from) continue;
-    out.push({ kind: 'payout_gap', text: `Versement semaine du ${p.weekStart} : écart de ${p.gap.toLocaleString('fr-FR')} Ar${p.note ? ` (« ${p.note} »)` : ''}`, href: '#/recapitulatif', amount: p.gap });
+    out.push({ kind: 'payout_gap', text: `Versement semaine du ${p.weekStart} : écart de ${fmtMoney(p.gap)}${p.note ? ` (« ${p.note} »)` : ''}`, href: '#/recapitulatif', amount: p.gap });
   }
   return out;
 }

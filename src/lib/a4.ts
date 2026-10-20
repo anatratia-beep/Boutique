@@ -1,11 +1,12 @@
 // Impression / PDF au format A4 : une page propre (en-tête société, titre, période, tableaux, pied de page),
 // envoyée à l'impression du navigateur (« Enregistrer en PDF » sur ordinateur et téléphone).
 import { get } from './db';
+import { fmtMoney } from './currency';
 import { DEFAULT_COMPANY, type Company } from './settings';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const h = esc;
-export const arA4 = (n: number) => `${Math.round(n).toLocaleString('fr-FR')}&nbsp;Ar`;
+export const arA4 = (n: number) => fmtMoney(n).replace(/ /g, '&nbsp;');
 
 export interface A4Table { title?: string; head: string[]; rows: (string | number)[][]; foot?: (string | number)[]; num?: number[] }
 /** Tableau HTML (colonnes `num` alignées à droite). Les cellules sont déjà échappées ou numériques. */

@@ -1,5 +1,7 @@
 // Commandes clients : saisie (comme le cahier), préparation, remise au livreur, retour, échanges.
 import { useMyScope, variantPage } from '../lib/scope';
+import { firstNonCash } from '../lib/paymethods';
+import { curSym, moneyInputMode, fmtMoney, roundMoney } from '../lib/currency';
 import { assertOpenAt, closedBy } from '../lib/closed';
 import { ScopeBar } from '../ui/scope';
 import { useEffect, useMemo, useState } from 'react';
@@ -14,7 +16,7 @@ import {
 } from '../lib/orders';
 import { useCompany } from '../lib/settings';
 import { correctWalkInSale, netMoves, refundSuggested, voidOrder } from '../lib/corrections';
-import { ACCOUNTS, ACCOUNT_IDS, FEE_STATE, feeState, payDeferredFees, settleCourier, settlementOf, redateReturn, redateSettlement, dayOf as dayOfIso, type AccountId, type CourierSettlement } from '../lib/money';
+import { ACCOUNTS, accountIds, FEE_STATE, feeState, payDeferredFees, settleCourier, settlementOf, redateReturn, redateSettlement, dayOf as dayOfIso, type AccountId, type CourierSettlement } from '../lib/money';
 import { Help, DiscountField, Badge, Button, Confirm, Empty, FilterSelect, IconButton, Modal, MoreMatches, PageHead, SelectField, TextField, fmtDate, fmtDateTime, navigate, toast, useRoute, DateSort, type DateOrder, useKeep } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { PayLines, payLinesSum, splitInTwo, type PayLine } from '../ui/payments';
@@ -278,7 +280,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
   const [discUnit, setDiscUnit] = useState<'ar' | 'pct'>(order?.discountPct ? 'pct' : 'ar');
   const [notes, setNotes] = useState(order?.notes ?? pre?.notes ?? '');
   // Paiements déjà reçus à la création (plusieurs possibles : espèces + MVola…).
-  const [pays, setPays] = useState<{ amount: string; method: PayMethod; ref: string }[]>([{ amount: pre?.prepay?.amount ? String(pre.prepay.amount) : '', method: pre?.prepay?.method ?? 'mvola', ref: pre?.prepay?.ref ?? '' }]);
+  const [pays, setPays] = useState<{ amount: string; method: PayMethod; ref: string }[]>([{ amount: pre?.prepay?.amount ? String(pre.prepay.amount) : '', method: pre?.prepay?.method ?? firstNonCash(), ref: pre?.prepay?.ref ?? '' }]);
   const prepay = pays[0].amount; const setPrepay = (v: string) => setPays([{ ...pays[0], amount: v }, ...pays.slice(1)]);
   const prepayMethod = pays[0].method;
   const prepaid = pays.reduce((s, x) => s + (parseAr(x.amount) || 0), 0);
@@ -392,7 +394,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
           <TextField label="Nom Facebook (facultatif)" value={facebook} onChange={setFacebook} placeholder="Tel qu’il apparaît dans Messenger" />
           <SelectField label="Zone de livraison" required value={zoneId} onChange={onZone} options={[{ value: '', label: '— Choisir —' }, ...zones.map((z) => ({ value: z.id, label: `${z.name} (${fmtAr(z.fee)})` }))]} />
           <TextField label={pickup ? 'Lieu (facultatif)' : 'Lieu précis'} required={!pickup} value={place} onChange={setPlace} placeholder={pickup ? 'Boutique' : 'Ex. Analakely, devant la pharmacie'} />
-          <TextField label="Frais de livraison (Ar)" required={!pickup} value={pickup ? '0' : fee} onChange={setFee} inputMode="numeric" disabled={pickup} hint={pickup ? 'Retrait en boutique : pas de frais.' : 'Obligatoire. Rempli selon la zone, modifiable.'} />
+          <TextField label={`Frais de livraison (${curSym()})`} required={!pickup} value={pickup ? '0' : fee} onChange={setFee} inputMode={moneyInputMode()} disabled={pickup} hint={pickup ? 'Retrait en boutique : pas de frais.' : 'Obligatoire. Rempli selon la zone, modifiable.'} />
           {!pickup && <SelectField label="Livreur" required value={courierId} onChange={setCourierId} options={[{ value: '', label: '— Choisir —' }, ...couriers.map((c) => ({ value: c.id, label: c.name })), { value: '__new', label: '+ Nouveau livreur…' }]} />}
           {!pickup && courierId === '__new' && <TextField label="Nom du nouveau livreur" required value={newCourier} onChange={setNewCourier} />}
         </div>
@@ -409,7 +411,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
         {priced.length === 0 ? <Empty icon="store" title="Aucun article" /> : (
           <div className="table-wrap">
             <table className="table lines-table">
-              <thead><tr><th>Article</th><th style={{ width: 90 }}>Qté</th><th style={{ width: 120 }}>Prix (Ar)</th><th className="t-num">Montant</th><th></th></tr></thead>
+              <thead><tr><th>Article</th><th style={{ width: 90 }}>Qté</th><th style={{ width: 120 }}>Prix ({curSym()})</th><th className="t-num">Montant</th><th></th></tr></thead>
               <tbody>
                 {priced.map((l) => {
                   const v = get<Variant>('variants', l.variantId); const p = v && get<Product>('products', v.productId);
@@ -425,7 +427,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
                         </div>}
                       </td>
                       <td data-label="Qté">{l.lotKey ? <span className="num">{l.qty}</span> : <input className="cell-input" inputMode="numeric" aria-label="Quantité" value={l.qty || ''} onChange={(e) => setLine(l.id, { qty: parseNum(e.target.value) || 0 })} />}</td>
-                      <td data-label="Prix (Ar)">{l.lotKey ? <span className="num">{fmtAr(l.unitPrice)}</span> : <input className="cell-input" inputMode="numeric" aria-label="Prix" value={l.unitPrice || ''} onChange={(e) => setLine(l.id, { unitPrice: parseNum(e.target.value) || 0, priceManual: true })} />}</td>
+                      <td data-label={`Prix (${curSym()})`}>{l.lotKey ? <span className="num">{fmtAr(l.unitPrice)}</span> : <input className="cell-input" inputMode={moneyInputMode()} aria-label="Prix" value={l.unitPrice || ''} onChange={(e) => setLine(l.id, { unitPrice: parseNum(e.target.value) || 0, priceManual: true })} />}</td>
                       <td className="t-num">{l.isChoice ? <span className="muted">choix</span> : fmtAr(l.qty * l.unitPrice)}</td>
                       <td className="t-actions">{(!l.lotKey || priced.find((x) => x.lotKey === l.lotKey)?.id === l.id) && <IconButton icon="x" label={l.lotKey ? 'Retirer le lot' : 'Retirer'} onClick={() => setLines(removeLine(lines, l))} />}</td>
                     </tr>
@@ -452,18 +454,18 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
               <button type="button" className="chip" onClick={() => setPrepay(String(Math.max(0, total - draft.deliveryFee)))}>Articles payés</button>
               {draft.deliveryFee > 0 && <button type="button" className="chip" onClick={() => setPrepay(String(Math.max(0, total)))}>Tout payé (articles + frais)</button>}
               {total > 0 && <button type="button" className="chip" onClick={() => setPays(splitInTwo(Math.max(0, total)).map((l) => ({ amount: l.amount, method: l.method, ref: '' })))}>En 2 tranches (espèces + mobile money)</button>}
-              {prepaid > 0 && <button type="button" className="chip" onClick={() => setPays([{ amount: '', method: 'mvola', ref: '' }])}>Rien payé</button>}
+              {prepaid > 0 && <button type="button" className="chip" onClick={() => setPays([{ amount: '', method: firstNonCash(), ref: '' }])}>Rien payé</button>}
             </div>
             {pays.map((x, i) => (
               <div key={i} className="grid-2 pay-row">
-                <TextField label={pays.length > 1 ? `Montant ${i + 1} (Ar)` : 'Montant (Ar)'} value={x.amount} onChange={(v) => setPay(i, { amount: v })} inputMode="numeric" hint={x.amount && parseAr(x.amount) ? `= ${fmtAr(parseAr(x.amount))}` : undefined} />
+                <TextField label={pays.length > 1 ? `Montant ${i + 1} (${curSym()})` : `Montant (${curSym()})`} value={x.amount} onChange={(v) => setPay(i, { amount: v })} inputMode={moneyInputMode()} hint={x.amount && parseAr(x.amount) ? `= ${fmtAr(parseAr(x.amount))}` : undefined} />
                 <SelectField label="Moyen" value={x.method} onChange={(v) => setPay(i, { method: v as PayMethod })} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} />
                 {x.method !== 'cash' && <TextField label="Référence de la transaction" value={x.ref} onChange={(v) => setPay(i, { ref: v })} />}
                 {pays.length > 1 && <div><Button variant="quiet" onClick={() => setPays(pays.filter((_, j) => j !== i))}>Retirer ce paiement</Button></div>}
               </div>
             ))}
             {pays.length > 1 && prepaid > 0 && <p className="small" style={{ margin: 0 }}>Total reçu : <strong>{fmtAr(prepaid)}</strong> ({pays.filter((x) => parseAr(x.amount)).map((x) => `${fmtAr(parseAr(x.amount) || 0)} ${PAY_METHODS[x.method]}`).join(' + ')}){total - prepaid > 0 ? <> · le livreur encaissera <strong>{fmtAr(total - prepaid)}</strong></> : null}</p>}
-            <div><Button variant="ghost" className="btn-sm" icon="plus" onClick={() => setPays([...pays, { amount: '', method: pays.some((x) => x.method === 'cash') ? 'mvola' : 'cash', ref: '' }])}>Ajouter un autre moyen de paiement</Button></div>
+            <div><Button variant="ghost" className="btn-sm" icon="plus" onClick={() => setPays([...pays, { amount: '', method: pays.some((x) => x.method === 'cash') ? firstNonCash() : 'cash', ref: '' }])}>Ajouter un autre moyen de paiement</Button></div>
           </div>
         )}
         <TextField label="Observations" value={notes} onChange={setNotes} placeholder="Ex. appeler avant de venir, client au bureau jusqu’à 16 h…" />
@@ -868,7 +870,7 @@ export function ReturnModal({ order: o, onClose }: { order: Order; onClose: () =
         setBusy(true);
         try { await recordReturn(o, { kept: keptNum, feeCharged: feeVal, collected: refusedAll ? [] : [{ amount: amountVal, method, ref: ref.trim() || undefined }], note: note.trim() || undefined }, returnAt(retDay, [o])); }
         catch (e: any) { toast(e.message, 'error'); setBusy(false); return; }
-        toast(refusedAll ? 'Commande refusée : 0 Ar, rien à régler avec le livreur' : toSettle ? 'Retour confirmé : la commande passe dans « À régler (livreur) »' : 'Retour enregistré'); setBusy(false); onClose();
+        toast(refusedAll ? `Commande refusée : 0 ${curSym()}, rien à régler avec le livreur` : toSettle ? 'Retour confirmé : la commande passe dans « À régler (livreur) »' : 'Retour enregistré'); setBusy(false); onClose();
       }}>{choiceMissing.length ? `Indiquez le choix (${choiceMissing.length} ligne(s))` : 'Confirmer le retour'}</Button></>}>
       <div className="stack">
         {provSum > 0 && <div className="notice"><Icon name="alert" /><span><strong>{fmtAr(provSum)}</strong> étaient notés d’avance comme « encaissés par le livreur ». Ils sont <strong>remplacés</strong> par le montant réellement encaissé indiqué plus bas (calculé : total après le choix du client − acompte payé à la boutique).</span></div>}
@@ -912,14 +914,14 @@ export function ReturnModal({ order: o, onClose }: { order: Order; onClose: () =
           <h3>Ce que le client a payé</h3>
           <div className="money-lines">
             <div><span>a. Articles (après le choix du client)</span><strong className="num">{fmtAr(c - feeVal)}</strong></div>
-            <div><span>b. Frais de livraison</span>{refusedAll ? <strong className="num">0 Ar</strong> : <input className="cell-input num-input" inputMode="numeric" aria-label="Frais de livraison facturés (Ar)" value={fee ?? String(feeVal)} onChange={(e) => setFee(e.target.value)} />}</div>
+            <div><span>b. Frais de livraison</span>{refusedAll ? <strong className="num">{fmtMoney(0)}</strong> : <input className="cell-input num-input" inputMode={moneyInputMode()} aria-label={`Frais de livraison facturés (${curSym()})`} value={fee ?? String(feeVal)} onChange={(e) => setFee(e.target.value)} />}</div>
             {refusedAll && <div className="small"><span><strong>Commande refusée : tout est à 0</strong> (articles et frais). Aucun frais pour le livreur, rien à régler avec lui : la commande va directement dans « Annulées / refusées ».</span></div>}
             <div className="ml-total"><span>= À payer par le client (a + b)</span><strong className="num">{fmtAr(c)}</strong></div>
             <div><span>c. Déjà payé à la boutique{paidHow ? ` (${paidHow})` : ''}</span><strong className="num">{prepaid ? '− ' + fmtAr(prepaid) : '—'}</strong></div>
             <div className="ml-strong"><span>e. Reste à verser par le livreur (frais compris)</span><strong className="num">{fmtAr(eDue)}</strong></div>
           </div>
           {!refusedAll && <div className="grid-2">
-            <TextField label="Encaissé par le livreur auprès du client (Ar)" value={amount ?? String(amountVal)} onChange={setAmount} inputMode="numeric" hint={amountVal !== toCollect ? `Prévu : ${fmtAr(toCollect)}` : 'Normalement : le reste à payer par le client.'} />
+            <TextField label={`Encaissé par le livreur auprès du client (${curSym()})`} value={amount ?? String(amountVal)} onChange={setAmount} inputMode={moneyInputMode()} hint={amountVal !== toCollect ? `Prévu : ${fmtAr(toCollect)}` : 'Normalement : le reste à payer par le client.'} />
             <SelectField label="Le client a payé le livreur en" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} />
             {method !== 'cash' && <TextField label="Référence de la transaction" value={ref} onChange={setRef} />}
           </div>}
@@ -1067,7 +1069,7 @@ export function PayFeeModal({ order, courier, amount, onClose }: { order: Order;
     <Confirm title={`Payer les frais de ${courier.name}`} confirmLabel="Enregistrer le paiement" onClose={onClose}
       onConfirm={async () => { await payDeferredFees(courier, amount, acc, [order]); toast(`Frais de ${order.number} payés à ${courier.name}`); }}
       message={<div className="stack-s"><p>Frais de livraison de la commande <strong>{order.number}</strong> : <strong>{fmtAr(amount)}</strong>, différés au retour du livreur.</p>
-        <SelectField label="Payé depuis" value={acc} onChange={(v) => setAcc(v as AccountId)} options={ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))} /></div>} />
+        <SelectField label="Payé depuis" value={acc} onChange={(v) => setAcc(v as AccountId)} options={accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))} /></div>} />
   );
 }
 
@@ -1093,7 +1095,7 @@ function EditPaymentModal({ order: o, payment: p, onClose }: { order: Order; pay
       <div className="stack">
         <p className="small">Montant actuel : <strong>{fmtAr(p.amount)}</strong> ({PAY_METHODS[p.method]}, {p.receivedBy === 'shop' ? 'reçu par la boutique' : 'encaissé par le livreur'}) le {fmtDateTime(p.at)}.</p>
         <div className="grid-2">
-          <TextField label="Nouveau montant (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" hint="0 pour annuler ce paiement" />
+          <TextField label={`Nouveau montant (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} hint="0 pour annuler ce paiement" />
           <SelectField label="Moyen" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} />
         </div>
         {lockDate ? <p className="small muted">Date du paiement : {fmtDateTime(p.at)} — le compte avec le livreur est fait, elle ne peut plus changer.</p>
@@ -1109,7 +1111,7 @@ function EditPaymentModal({ order: o, payment: p, onClose }: { order: Order; pay
 function PayModal({ order: o, onClose }: { order: Order; onClose: () => void }) {
   const refund = remaining(o) < 0;
   const due = Math.abs(remaining(o));
-  const [lines, setLines] = useState<PayLine[]>([{ method: refund ? 'cash' : 'mvola', amount: String(due), ref: '' }]);
+  const [lines, setLines] = useState<PayLine[]>([{ method: refund ? 'cash' : firstNonCash(), amount: String(due), ref: '' }]);
   const [by, setBy] = useState<'shop' | 'courier'>('shop');
   // Commande rattachée à un jour qui n'est pas encore arrivé (saisie après la fermeture) : l'acompte prend cette date.
   const [when, setWhen] = useState(() => toLocalInput(o.orderDate && o.orderDate > new Date().toISOString() ? o.orderDate : new Date().toISOString()));
@@ -1203,7 +1205,7 @@ function VoidModal({ order: o, onClose }: { order: Order; onClose: () => void })
         <SelectField label="Motif" value={reason} onChange={setReason} options={['Erreur de saisie', 'Vente en double', 'Client a rendu les articles', 'Mauvais article', 'Autre'].map((r) => ({ value: r, label: r }))} />
         {reason === 'Autre' && <TextField label="Précisez" value={other} onChange={setOther} required />}
         {suggested > 0 && <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} /> L’argent reçu ({fmtAr(suggested)}) est rendu au client / sort de la caisse</label>}
-        {refund && <div className="grid-2"><TextField label="Montant rendu (Ar)" value={amount} onChange={setAmount} inputMode="numeric" /><SelectField label="Moyen" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} /></div>}
+        {refund && <div className="grid-2"><TextField label={`Montant rendu (${curSym()})`} value={amount} onChange={setAmount} inputMode={moneyInputMode()} /><SelectField label="Moyen" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} /></div>}
       </div>}
       onConfirm={async () => { if (!why) throw new Error('Indiquez le motif.'); await voidOrder(o, why, refund ? { amount: parseAr(amount) || 0, method } : undefined); toast(`${o.number} annulée : stock remis`); }} />
   );
@@ -1227,7 +1229,7 @@ function CorrectSaleModal({ order: o, onClose }: { order: Order; onClose: () => 
     if (!reason.trim()) return setError('Indiquez la raison de la correction.');
     setBusy(true);
     try {
-      await correctWalkInSale(o, kept.map(({ qtyS, priceS, ...l }) => ({ ...l, priceManual: true })), parseNum(discount) || 0, reason.trim(), settle && Math.round(diff) ? { amount: diff, method } : undefined);
+      await correctWalkInSale(o, kept.map(({ qtyS, priceS, ...l }) => ({ ...l, priceManual: true })), parseNum(discount) || 0, reason.trim(), settle && roundMoney(diff) ? { amount: diff, method } : undefined);
       toast(`${o.number} corrigée : stock mis à jour`); onClose();
     } catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
@@ -1236,16 +1238,16 @@ function CorrectSaleModal({ order: o, onClose }: { order: Order; onClose: () => 
       <div className="stack">
         <p className="small muted">Mettez 0 pour retirer un article. Le stock est remis exactement selon la vente corrigée ; l’ancienne et la nouvelle version restent dans l’historique.</p>
         <div className="table-wrap"><table className="table">
-          <thead><tr><th>Article</th><th>Quantité</th><th>Prix unitaire (Ar)</th><th className="t-num">Montant</th></tr></thead>
+          <thead><tr><th>Article</th><th>Quantité</th><th>Prix unitaire ({curSym()})</th><th className="t-num">Montant</th></tr></thead>
           <tbody>{rows.map((r, i) => { const v = get<Variant>('variants', r.variantId); const p = v && get<Product>('products', v.productId); return (
             <tr key={r.id}><td><strong>{p?.name ?? '?'}</strong><div className="small muted">{v?.sku}</div></td>
               <td><input className="cell-input" inputMode="numeric" aria-label={`Quantité ${v?.sku}`} value={r.qtyS} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qtyS: e.target.value } : x)))} /></td>
-              <td><input className="cell-input" inputMode="numeric" aria-label={`Prix ${v?.sku}`} value={r.priceS} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, priceS: e.target.value } : x)))} /></td>
+              <td><input className="cell-input" inputMode={moneyInputMode()} aria-label={`Prix ${v?.sku}`} value={r.priceS} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, priceS: e.target.value } : x)))} /></td>
               <td className="t-num">{fmtAr((parseNum(r.qtyS) ?? 0) * (parseNum(r.priceS) ?? 0))}</td></tr>); })}</tbody>
         </table></div>
-        <div className="grid-2"><TextField label="Remise (Ar)" value={discount} onChange={setDiscount} inputMode="numeric" /><TextField label="Raison de la correction" required value={reason} onChange={setReason} placeholder="ex. mauvaise quantité saisie" /></div>
-        <p>Nouveau total : <strong>{fmtAr(total)}</strong> · déjà payé : {fmtAr(paidNow)}{Math.round(diff) ? <> · <strong className={diff < 0 ? 'neg' : ''}>{diff < 0 ? `à rendre ${fmtAr(-diff)}` : `reste à payer ${fmtAr(diff)}`}</strong></> : ' · rien à régler'}</p>
-        {Math.round(diff) !== 0 && <div className="row" style={{ gap: 10, alignItems: 'center' }}><label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={settle} onChange={(e) => setSettle(e.target.checked)} /> Enregistrer {diff < 0 ? 'l’argent rendu' : 'le paiement'} maintenant</label>
+        <div className="grid-2"><TextField label={`Remise (${curSym()})`} value={discount} onChange={setDiscount} inputMode={moneyInputMode()} /><TextField label="Raison de la correction" required value={reason} onChange={setReason} placeholder="ex. mauvaise quantité saisie" /></div>
+        <p>Nouveau total : <strong>{fmtAr(total)}</strong> · déjà payé : {fmtAr(paidNow)}{roundMoney(diff) ? <> · <strong className={diff < 0 ? 'neg' : ''}>{diff < 0 ? `à rendre ${fmtAr(-diff)}` : `reste à payer ${fmtAr(diff)}`}</strong></> : ' · rien à régler'}</p>
+        {roundMoney(diff) !== 0 && <div className="row" style={{ gap: 10, alignItems: 'center' }}><label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={settle} onChange={(e) => setSettle(e.target.checked)} /> Enregistrer {diff < 0 ? 'l’argent rendu' : 'le paiement'} maintenant</label>
           {settle && <SelectField label="Moyen" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} />}</div>}
         {error && <div className="notice notice-danger"><Icon name="alert" /><span>{error}</span></div>}
       </div>
@@ -1347,7 +1349,7 @@ function PickupModal({ order: o, onClose }: { order: Order; onClose: () => void 
       }}>Valider</Button></>}>
       <div className="stack">
         <p>Le client est venu chercher sa commande en boutique : elle devient une <strong>vente sur place</strong>. Les articles sortent du stock{converting ? ', la livraison est annulée (pas de frais de livraison, pas de livreur)' : ''}.</p>
-        <TextField label="Montant encaissé (Ar)" value={amount} onChange={setAmount} inputMode="numeric" hint={`Reste à payer : ${fmtAr(rest)}`} />
+        <TextField label={`Montant encaissé (${curSym()})`} value={amount} onChange={setAmount} inputMode={moneyInputMode()} hint={`Reste à payer : ${fmtAr(rest)}`} />
         <SelectField label="Moyen de paiement" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} />
         {method !== 'cash' && <TextField label="Référence de la transaction" value={ref} onChange={setRef} />}
       </div>

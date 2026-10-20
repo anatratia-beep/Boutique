@@ -1,7 +1,10 @@
 // Paramètres : société, apparence, cloud, sauvegardes, système.
 import { useEffect, useRef, useState } from 'react';
+import { KIND_LABELS, SUGGESTED, payMethods, savePayMethods, type PayKind, type PayMethodDef } from '../lib/paymethods';
+import { parseNum } from '../lib/catalog';
+import { fmtMoney, curSym, moneyInputMode, parseMoney, CURRENCIES } from '../lib/currency';
 import { audit, useCan } from '../lib/auth';
-import { getMeta, requeueAll, save, setMeta, useMeta, useTable, type BaseRecord } from '../lib/db';
+import { getMeta, newId, requeueAll, save, setMeta, useMeta, useTable, type BaseRecord } from '../lib/db';
 import { boostDeadlineTime } from '../lib/boosts';
 import { BRAND_SWATCHES, DEFAULT_COMPANY, resizeImage, useCompany, type ThemeMode } from '../lib/settings';
 import { disconnectCloud, connectCloud, getCloud, syncNow, useSyncStatus, type SyncLogLine } from '../lib/sync';
@@ -20,6 +23,7 @@ import { actionsSince, createRestorePoint, restorePoints, restoreToPoint, type R
 
 const TABS = [
   { key: 'societe', label: 'Société', perm: 'settings.company' },
+  { key: 'paiements', label: 'Moyens de paiement', perm: 'settings.company' },
   { key: 'apparence', label: 'Apparence', perm: '' },
   { key: 'imprimantes', label: 'Imprimantes', perm: '' },
   { key: 'zones', label: 'Zones de livraison', perm: 'couriers.view' },
@@ -44,6 +48,7 @@ export function SettingsPage() {
         ))}
       </div>
       {current.key === 'societe' && <CompanyTab />}
+      {current.key === 'paiements' && <PayMethodsTab />}
       {current.key === 'apparence' && <AppearanceTab />}
       {current.key === 'imprimantes' && <PrintersTab />}
       {current.key === 'zones' && <Zones />}
@@ -136,13 +141,21 @@ function CompanyTab() {
           );
         })}
       </div>
-      <div className="grid-2">
-        <TextField label="Objectif de chiffre d’affaires par jour (Ar)" value={form.targetDay ? String(form.targetDay) : ''} onChange={(v) => setForm({ ...form, targetDay: Number(v.replace(/\D/g, '')) || undefined })} inputMode="numeric" hint="Facultatif : une barre de progression s’affiche sur l’accueil et dans le rapport du jour." />
-        <TextField label="Objectif de chiffre d’affaires par mois (Ar)" value={form.targetMonth ? String(form.targetMonth) : ''} onChange={(v) => setForm({ ...form, targetMonth: Number(v.replace(/\D/g, '')) || undefined })} inputMode="numeric" hint="Facultatif : progression du mois, avec le rythme à tenir." />
+      <div className="stack-s">
+        <div className="grid-2">
+          <SelectField label="Devise de la boutique" value={form.currency || 'MGA'} onChange={(v) => setForm({ ...form, currency: v, currencySymbol: '' })}
+            options={CURRENCIES.map((x) => ({ value: x.code, label: `${x.name} — ${x.symbol}${x.decimals ? ' (avec centimes)' : ''}` }))} />
+          <TextField label="Symbole affiché (facultatif)" value={form.currencySymbol ?? ''} onChange={set('currencySymbol')} placeholder={CURRENCIES.find((x) => x.code === (form.currency || 'MGA'))?.symbol} maxLength={6} hint="Laissez vide pour le symbole habituel." />
+        </div>
+        {(form.currency || 'MGA') !== (c.currency || 'MGA') && <div className="notice"><Icon name="alert" /><span>Changer de devise ne convertit pas les montants déjà saisis (prix, ventes, caisse). À faire de préférence avant de commencer.</span></div>}
       </div>
-      <TextField label="Taux du dollar pour les boosts (Ar)" value={String(form.usdRate ?? 4700)} onChange={(v) => setForm({ ...form, usdRate: Number(v.replace(/\D/g, '')) || 0 })} inputMode="numeric" hint="Sert à convertir la dépense des boosts ($) en ariary dans le tableau de la semaine et le récapitulatif mensuel." />
+      <div className="grid-2">
+        <TextField label={`Objectif de chiffre d’affaires par jour (${curSym()})`} value={form.targetDay ? String(form.targetDay) : ''} onChange={(v) => setForm({ ...form, targetDay: parseMoney(v) || undefined })} inputMode={moneyInputMode()} hint="Facultatif : une barre de progression s’affiche sur l’accueil et dans le rapport du jour." />
+        <TextField label={`Objectif de chiffre d’affaires par mois (${curSym()})`} value={form.targetMonth ? String(form.targetMonth) : ''} onChange={(v) => setForm({ ...form, targetMonth: parseMoney(v) || undefined })} inputMode={moneyInputMode()} hint="Facultatif : progression du mois, avec le rythme à tenir." />
+      </div>
+      <TextField label={`Taux du dollar pour les boosts (${curSym()})`} value={String(form.usdRate ?? 4700)} onChange={(v) => setForm({ ...form, usdRate: parseNum(v) || 0 })} inputMode="decimal" hint="Sert à convertir la dépense des boosts ($) dans la devise de la boutique, dans le tableau de la semaine et le récapitulatif mensuel." />
       <SelectField label="Vente interne (employés) : prix de revient arrondi" value={String(form.internalRounding ?? 1)} onChange={(v) => setForm({ ...form, internalRounding: Number(v) || 1 })}
-        options={[1, 50, 100, 500, 1000].map((n) => ({ value: String(n), label: n === 1 ? 'à l’ariary supérieur (ex. 2 562,5 → 2 563 Ar)' : `aux ${n.toLocaleString('fr-FR')} Ar supérieurs (ex. 2 563 → ${(Math.ceil(2563 / n) * n).toLocaleString('fr-FR')} Ar)` }))} />
+        options={[1, 50, 100, 500, 1000].map((n) => ({ value: String(n), label: n === 1 ? `à l’unité supérieure (ex. 2 562,5 → ${fmtMoney(2563)})` : `aux ${fmtMoney(n)} supérieurs (ex. 2 563 → ${fmtMoney(Math.ceil(2563 / n) * n)})` }))} />
       <div className="row">
         <Button busy={busy} disabled={!form.name.trim()} onClick={async () => {
           setBusy(true);
@@ -177,6 +190,58 @@ export function ThemePicker() {
           <Icon name={icon} size={16} />{label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** Moyens de paiement de la boutique : chacun a son compte en trésorerie. On les désactive, on ne les supprime pas. */
+function PayMethodsTab() {
+  useTable('settings');
+  const saved = payMethods();
+  const [list, setList] = useState<PayMethodDef[]>(saved);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const changed = JSON.stringify(list) !== JSON.stringify(saved);
+  const up = (i: number, patch: Partial<PayMethodDef>) => setList(list.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+  const move = (i: number, d: -1 | 1) => { const j = i + d; if (j < 1 || j >= list.length) return; const n = [...list]; [n[i], n[j]] = [n[j], n[i]]; setList(n); };
+  const add = () => {
+    const label = name.trim(); if (!label) return;
+    if (list.some((m) => m.label.toLowerCase() === label.toLowerCase())) return toast('Ce moyen existe déjà (réactivez-le s’il est désactivé).', 'error');
+    const kind: PayKind = /carte|card|visa/i.test(label) ? 'card' : /virement|banque|bank|chèque|cheque/i.test(label) ? 'bank' : /paypal/i.test(label) ? 'other' : 'mobile';
+    setList([...list, { id: 'pm_' + newId().replace(/[^a-z0-9]/gi, '').slice(-8).toLowerCase(), label, kind, active: true }]); setName('');
+  };
+  return (
+    <div className="card stack">
+      <div><h2>Moyens de paiement</h2><p className="small muted">Ceux que vos clients utilisent : ils sont proposés à chaque encaissement et ont chacun leur compte dans la trésorerie. Un moyen déjà utilisé ne se supprime pas : désactivez-le, l’historique garde son nom.</p></div>
+      <div className="table-wrap"><table className="table">
+        <thead><tr><th>Nom</th><th>Type</th><th>Actif</th><th>Ordre</th></tr></thead>
+        <tbody>
+          {list.map((m, i) => (
+            <tr key={m.id}>
+              <td><input className="cell-input" aria-label={`Nom du moyen ${i + 1}`} value={m.label} onChange={(e) => up(i, { label: e.target.value })} maxLength={30} /></td>
+              <td>{m.id === 'cash' ? <span className="small muted">Espèces</span> : (
+                <select className="cell-input" aria-label={`Type du moyen ${m.label}`} value={m.kind} onChange={(e) => up(i, { kind: e.target.value as PayKind })}>
+                  {(Object.keys(KIND_LABELS) as PayKind[]).filter((k) => k !== 'cash').map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}
+                </select>)}</td>
+              <td>{m.id === 'cash' ? <span className="small muted">toujours</span> : <input type="checkbox" aria-label={`${m.label} actif`} checked={m.active} onChange={(e) => up(i, { active: e.target.checked })} />}</td>
+              <td>{m.id !== 'cash' && <div className="row" style={{ gap: 4 }}><IconButton icon="chevronUp" label={`Monter ${m.label}`} onClick={() => move(i, -1)} disabled={i <= 1} /><IconButton icon="chevronDown" label={`Descendre ${m.label}`} onClick={() => move(i, 1)} disabled={i === list.length - 1} /></div>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <div className="row" style={{ alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, minWidth: 200 }}><TextField label="Ajouter un moyen" value={name} onChange={setName} list="pm-suggest" placeholder="Ex. Wave, MTN MoMo, Carte bancaire…" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
+        <datalist id="pm-suggest">{SUGGESTED.filter((x) => !list.some((m) => m.label.toLowerCase() === x.toLowerCase())).map((x) => <option key={x} value={x} />)}</datalist>
+        <Button variant="ghost" icon="plus" onClick={add} disabled={!name.trim()}>Ajouter</Button>
+      </div>
+      <div className="row">
+        <Button icon="check" busy={busy} disabled={!changed || list.some((m) => !m.label.trim())} onClick={async () => {
+          setBusy(true);
+          try { await savePayMethods(list.map((m) => ({ ...m, label: m.label.trim() }))); toast('Moyens de paiement enregistrés'); } catch (e: any) { toast(e.message, 'error'); }
+          setBusy(false);
+        }}>Enregistrer</Button>
+        {changed && <Button variant="quiet" onClick={() => setList(saved)}>Annuler les changements</Button>}
+      </div>
     </div>
   );
 }

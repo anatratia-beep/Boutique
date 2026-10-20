@@ -1,5 +1,6 @@
 // Inventaires : comptage physique, enregistrement d'une « fiche d'inventaire » (qui, quand, quelle page, chaque ligne
 // comptée avec le stock théorique, le compté et l'écart), historique filtrable, export / import Excel au format du
+import { fmtMoney, curSym, roundMoney } from './currency';
 // fichier « Articles et stock », annulation par le super-admin ou le gérant, et détail des mouvements d'un article
 // pour comprendre un écart entre stock réel et stock théorique.
 import { all, get, getMeta, save, setMeta, type BaseRecord } from './db';
@@ -51,7 +52,7 @@ export async function validateInventory(counts: { variantId: string; counted: nu
   } as Partial<Inventory>);
   await addMoves(gapsL.map((l) => ({ variantId: l.variantId, qty: l.delta, type: 'inventory' as const, unitCost: l.unitCost, refType: 'inventory', refId: inv.id, reason: `${(inv as Inventory).number} : théorique ${l.theo}, compté ${l.counted}`, at })));
   const big = Math.abs(gapsL.reduce((s, l) => s + l.delta * l.unitCost, 0));
-  await audit('Inventaire', `${(inv as Inventory).number} : ${lines.length} ligne(s) comptée(s), ${gapsL.length} écart(s), ${gapsL.reduce((s, l) => s + l.delta, 0)} pièce(s), valeur ${Math.round(gapsL.reduce((s, l) => s + l.delta * l.unitCost, 0)).toLocaleString('fr-FR')} Ar`, 'inventories', inv.id, big >= 100000 ? 'high' : gapsL.length ? 'medium' : 'low');
+  await audit('Inventaire', `${(inv as Inventory).number} : ${lines.length} ligne(s) comptée(s), ${gapsL.length} écart(s), ${gapsL.reduce((s, l) => s + l.delta, 0)} pièce(s), valeur ${fmtMoney(gapsL.reduce((s, l) => s + l.delta * l.unitCost, 0))}`, 'inventories', inv.id, big >= 100000 ? 'high' : gapsL.length ? 'medium' : 'low');
   return inv as Inventory;
 }
 
@@ -123,10 +124,10 @@ export async function countSheet(variantIds: string[], withTheo: boolean) {
 /** Export d'un inventaire validé : même colonnes que l'import articles et stock (Stock = compté), plus le détail. */
 export async function inventoryWorkbook(inv: Inventory) {
   return writeXlsx([{
-    name: inv.number, columns: [...COLS, { header: 'Stock théorique', width: 14, number: true }, { header: 'Écart', width: 9, number: true }, { header: 'Coût unitaire (Ar)', width: 14, number: true }, { header: 'Valeur écart (Ar)', width: 15, number: true }],
-    rows: inv.lines.map((l) => rowOf(l.variantId, l.counted, [l.theo, l.delta, Math.round(l.unitCost), Math.round(l.delta * l.unitCost)])),
+    name: inv.number, columns: [...COLS, { header: 'Stock théorique', width: 14, number: true }, { header: 'Écart', width: 9, number: true }, { header: `Coût unitaire (${curSym()})`, width: 14, number: true }, { header: `Valeur écart (${curSym()})`, width: 15, number: true }],
+    rows: inv.lines.map((l) => rowOf(l.variantId, l.counted, [l.theo, l.delta, roundMoney(l.unitCost), roundMoney(l.delta * l.unitCost)])),
   }, { name: 'Informations', columns: [], rows: [], notes: [
-    `#${inv.number} — inventaire du ${new Date(inv.at).toLocaleString('fr-FR')}`, `Fait par : ${inv.byName ?? '?'}`, `Lignes comptées : ${inv.counted} · écarts : ${inv.gaps} · pièces : ${inv.pcsGap} · valeur : ${Math.round(inv.valueGap).toLocaleString('fr-FR')} Ar`,
+    `#${inv.number} — inventaire du ${new Date(inv.at).toLocaleString('fr-FR')}`, `Fait par : ${inv.byName ?? '?'}`, `Lignes comptées : ${inv.counted} · écarts : ${inv.gaps} · pièces : ${inv.pcsGap} · valeur : ${fmtMoney(inv.valueGap)}`,
     inv.status === 'cancelled' ? `ANNULÉ le ${new Date(inv.cancelledAt!).toLocaleString('fr-FR')} par ${inv.cancelledBy} : ${inv.cancelReason}` : 'Validé.',
     'La colonne « Stock » est la quantité comptée : ce fichier peut être réimporté (Stock → Inventaire → Importer) pour refaire le même comptage.',
   ] }]);

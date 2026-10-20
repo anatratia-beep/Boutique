@@ -7,6 +7,7 @@
 // donne la différence. Au retour, si le client ne garde pas le lot complet, il paie les articles gardés au prix
 // normal (le prix du lot ne s'applique qu'aux lots complets).
 import { get, newId } from './db';
+import { fmtMoney, roundMoney } from './currency';
 import { productVariants, todayYmd, type Product, type Variant } from './catalog';
 import type { OrderLine } from './orders';
 
@@ -109,7 +110,7 @@ export function computeAdjusts(lines: OrderLine[]): Adjust[] {
     const items = [...new Map(ls.map((l) => [l.lotItem || l.id, { id: l.lotItem || l.id, qty: l.lotPer || 1 }])).values()];
     const value = ls.reduce((t, l) => t + l.qty * l.unitPrice, 0);
     const p = get<Product>('products', first.lotProductId || '');
-    out.push({ id: `lot_${key}`, kind: 'lot', productId: first.lotProductId || '', lotKey: key, qty: n, unit: (first.lotPrice ?? p?.priceRetail ?? 0) - Math.round(value / n), items, refVariantId: first.variantId, label: p?.name });
+    out.push({ id: `lot_${key}`, kind: 'lot', productId: first.lotProductId || '', lotKey: key, qty: n, unit: (first.lotPrice ?? p?.priceRetail ?? 0) - roundMoney(value / n), items, refVariantId: first.variantId, label: p?.name });
   }
   const byProduct = new Map<string, true>();
   for (const l of lines) { if (l.lotKey || l.isChoice || l.wholesale || l.priceManual) continue; const pid = productOfVariant(l.variantId); if (pid) byProduct.set(pid, true); }
@@ -125,7 +126,7 @@ export function computeAdjusts(lines: OrderLine[]): Adjust[] {
     for (const t of tiers) {
       const c = Math.floor(rem / t.qty);
       if (!c) continue;
-      const unit = t.price - Math.round(t.qty * avg);
+      const unit = t.price - roundMoney(t.qty * avg);
       if (unit >= 0) continue;
       out.push({ id: `tier_${pid}_${t.qty}`, kind: 'tier', productId: pid, qty: c, unit, tierQty: t.qty, tierPrice: t.price, refVariantId: ls[0].variantId, label: p?.name });
       rem -= c * t.qty;
@@ -159,7 +160,7 @@ export const adjustsKeptTotal = (o: { adjusts?: Adjust[]; lines: OrderLine[] }) 
 
 /** Libellé court : « Prix du lot Pack école (1 × 45 000 Ar) » ou « Prix par quantité : 3 pour 50 000 Ar ». */
 export function adjustLabel(a: Adjust) {
-  const fmt = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} Ar`;
+  const fmt = (n: number) => `${fmtMoney(n)}`;
   if (a.kind === 'lot') { const p = get<Product>('products', a.productId); return `Prix du lot « ${a.label ?? p?.name ?? 'lot'} »${a.qty > 1 ? ` × ${a.qty}` : ''}${p?.priceRetail ? ` (${fmt(p.priceRetail)} le lot)` : ''}`; }
   return `Prix par quantité « ${a.label ?? get<Product>('products', a.productId)?.name ?? ''} » : ${a.tierQty} pour ${fmt(a.tierPrice ?? 0)}${a.qty > 1 ? ` × ${a.qty}` : ''}`;
 }

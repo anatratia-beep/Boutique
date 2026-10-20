@@ -1,11 +1,12 @@
 // Règlement avec le livreur (étape après « retour confirmé ») : une ou plusieurs commandes du même livreur réglées
 // en une fois — articles et frais séparés, frais du livreur (retenus, payés à part, différés), montant remis.
 import { linesPages } from '../lib/scope';
+import { curSym, moneyInputMode } from '../lib/currency';
 import { useState } from 'react';
 import { save } from '../lib/db';
 import { fmtAr, parseNum, parseAr } from '../lib/catalog';
 import { courierSplit, defaultReturnDay, orderLabel, returnAt, type Courier, type Order } from '../lib/orders';
-import { ACCOUNTS, ACCOUNT_IDS, courierBalance, settleCourier, type AccountId } from '../lib/money';
+import { ACCOUNTS, accountIds, courierBalance, settleCourier, type AccountId } from '../lib/money';
 import { Button, Modal, SelectField, TextField, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
 
@@ -85,13 +86,13 @@ export function SettleModal({ courier, orders, onClose, onDone }: { courier: Cou
         </div>
         <SelectField label="g. Les frais du livreur sont payés…" required value={feeChoice} onChange={setFeeChoice} options={[
           { value: 'retenue', label: 'Gardés par le livreur sur l’argent versé' },
-          ...ACCOUNT_IDS.filter((x) => x !== 'bank').map((x) => ({ value: 'apart:' + x, label: `Payés à part — ${ACCOUNTS[x]}` })),
+          ...accountIds().filter((x) => x !== 'bank').map((x) => ({ value: 'apart:' + x, label: `Payés à part — ${ACCOUNTS[x]}` })),
           { value: 'plustard', label: 'Différés (à payer au plus vite)' },
         ]} />
         <div className="ml-expected"><span>Le livreur doit vous remettre</span><strong className="num">{fmtAr(expected)}</strong></div>
         <div className="grid-2">
-          <TextField label="f. Montant versé par le livreur (Ar)" required value={amount ?? String(expected)} onChange={setAmount} inputMode="numeric" />
-          <SelectField label="Reçu sur" value={account} onChange={(v) => setAccount(v as AccountId)} options={ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))} />
+          <TextField label={`f. Montant versé par le livreur (${curSym()})`} required value={amount ?? String(expected)} onChange={setAmount} inputMode={moneyInputMode()} />
+          <SelectField label="Reçu sur" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))} />
         </div>
         <TextField label={gap ? 'Remarque (écart)' : 'Remarque (facultatif)'} required={gap !== 0} value={note} onChange={setNote} />
         <TextField label="Date réelle du règlement" type="date" required value={day} onChange={setDay} error={dayError || null} hint="Par défaut, le jour du retour des colis : l’argent et le compte du livreur restent à cette date." />

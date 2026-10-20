@@ -1,6 +1,7 @@
 // Rapport au patron : résultat, CA par page, stock (début, entrées, fin, sorties) et stock par page, sur une période
 // (jour, semaine du lundi au samedi, mois, année, ou dates libres). Sert aussi au texte WhatsApp et au PDF A4.
 import { all, get } from './db';
+import { fmtMoney, roundMoney } from './currency';
 import { variantCost, type Category, type Product, type StockMove, type Variant } from './catalog';
 import { moneyOut, salesLedger } from './analytics';
 import { rootOf } from './scope';
@@ -91,9 +92,9 @@ export function bossReport(from: string, to: string): Report {
   const revenue = lines.reduce((t, l) => t + l.amount, 0);
   const cost = lines.reduce((t, l) => t + l.cost, 0);
   const boostUsd = Object.values(g.boostUsd).reduce((t, v) => t + v, 0);
-  const boost = Math.round(boostUsd * rate);
+  const boost = roundMoney(boostUsd * rate);
   const { expenses } = moneyOut(from, to);
-  const pages = [...byPage.values()].filter((r) => Math.round(r.revenue) !== 0).map((r) => ({ ...r, profit: r.revenue - r.cost - r.boost, share: revenue ? r.revenue / revenue : 0 })).sort((a, b) => b.revenue - a.revenue);
+  const pages = [...byPage.values()].filter((r) => roundMoney(r.revenue) !== 0).map((r) => ({ ...r, profit: r.revenue - r.cost - r.boost, share: revenue ? r.revenue / revenue : 0 })).sort((a, b) => b.revenue - a.revenue);
   const st = stockFigures(from, to);
   const netNoBoost = revenue - cost - expenses;
   return {
@@ -107,7 +108,7 @@ export function bossReport(from: string, to: string): Report {
 /** Le dimanche n'est affiché que s'il y a eu des ventes ce jour-là. */
 export const sundaySales = (r: Report) => salesLedger(r.to, r.to).length > 0;
 
-const ar = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} Ar`;
+const ar = (n: number) => `${fmtMoney(n)}`;
 /** Texte court pour WhatsApp. */
 export function reportText(kind: PKind, label: string, r: Report, company: string) {
   const out = [`*${company} — Rapport ${kind === 'day' ? 'du jour' : kind === 'week' ? 'de la semaine' : kind === 'month' ? 'du mois' : kind === 'year' ? "de l'année" : 'de la période'}*`, label, ''];

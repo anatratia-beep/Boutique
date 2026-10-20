@@ -1,6 +1,7 @@
 // Rapports → « Rapport au patron » : jour (par défaut aujourd'hui), semaine (lundi → samedi), mois, année, période libre.
 // Résultat, CA par page, stock (début + entrées − fin = sorti) et stock par page ; envoi WhatsApp, PDF A4, Excel.
 import { useMemo, useState } from 'react';
+import { roundMoney } from '../lib/currency';
 import { setMeta, useMeta, useTable } from '../lib/db';
 import { fmtAr } from '../lib/catalog';
 import { fmtPhone, normPhone } from '../lib/orders';
@@ -138,7 +139,7 @@ export function BossReport() {
           <div><span>− Valeur du stock à la fin</span><strong className="num">{fmtAr(r.stock.end)}</strong></div>
           <div className="ml-strong"><span>= Valeur du stock sorti</span><strong className="num">{fmtAr(r.stock.out)}</strong></div>
           <div><span className="small">dont vendu (coût des ventes)</span><span className="num small">{fmtAr(r.stock.sold)}</span></div>
-          {Math.round(r.stock.other) !== 0 && <div><span className="small">dont autres sorties (pertes, ajustements)</span><span className="num small">{fmtAr(r.stock.other)}</span></div>}
+          {roundMoney(r.stock.other) !== 0 && <div><span className="small">dont autres sorties (pertes, ajustements)</span><span className="num small">{fmtAr(r.stock.other)}</span></div>}
         </div>
         <h3>Stock par page</h3>
         <SortTable rowKey={(x) => x.id} rows={r.stockPages} cols={stockCols} initialSort={{ key: 'e', desc: true }} empty="Aucun stock." />

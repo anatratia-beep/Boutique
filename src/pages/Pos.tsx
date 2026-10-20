@@ -1,5 +1,6 @@
 // Vente sur place : écran de comptoir rapide (recherche, panier, encaissement, monnaie à rendre).
 import { useMemo, useState } from 'react';
+import { fmtMoney, curSym, moneyInputMode } from '../lib/currency';
 import { useCan, useMe, type User } from '../lib/auth';
 import { rootOf, useMyScope } from '../lib/scope';
 import { ScopeBar } from '../ui/scope';
@@ -144,7 +145,7 @@ export function PosPage() {
             <button type="button" aria-pressed={internal} onClick={() => setInternal(true)}>Vente interne (employé)</button>
           </div>
           {internal && (
-            <div className="notice"><Icon name="tag" /><span style={{ flex: 1 }}>Achat d’un employé : chaque article est vendu à son <strong>prix de revient arrondi</strong>{step > 1 ? ` aux ${fmtNum(step)} Ar supérieurs` : ' à l’ariary supérieur'}. Pas de remise ni de prix de gros.</span></div>
+            <div className="notice"><Icon name="tag" /><span style={{ flex: 1 }}>Achat d’un employé : chaque article est vendu à son <strong>prix de revient arrondi</strong>{step > 1 ? ` aux ${fmtMoney(step)} supérieurs` : ' à l’unité supérieure'}. Pas de remise ni de prix de gros.</span></div>
           )}
           {internal && <SelectField label="Employé qui achète" required value={employeeId} onChange={setEmployeeId} options={[{ value: '', label: 'Choisir l’employé…' }, ...users.map((u) => ({ value: u.id, label: u.fullName }))]} />}
           {priced.length === 0 ? <Empty icon="store" title="Touchez un article pour l’ajouter" /> : (
@@ -168,7 +169,7 @@ export function PosPage() {
                         <IconButton icon="plus" label="Ajouter un" onClick={() => setLine(l.id, { qty: l.qty + 1 })} />
                         {internal
                           ? <span className="small muted">{l.unitPrice ? `${fmtAr(l.unitPrice)} (revient ${fmtAr(Math.round((v?.costAvg ?? 0) * 100) / 100)})` : <span className="neg">prix de revient manquant</span>}</span>
-                          : <input className="cell-input" style={{ maxWidth: 110 }} inputMode="numeric" aria-label="Prix unitaire" value={l.unitPrice || ''} onChange={(e) => setLine(l.id, { unitPrice: parseNum(e.target.value) || 0, priceManual: true })} />}
+                          : <input className="cell-input" style={{ maxWidth: 110 }} inputMode={moneyInputMode()} aria-label="Prix unitaire" value={l.unitPrice || ''} onChange={(e) => setLine(l.id, { unitPrice: parseNum(e.target.value) || 0, priceManual: true })} />}
                       </div></>}
                     </div>
                     <strong className="num">{fmtAr(l.qty * l.unitPrice)}</strong>
@@ -188,7 +189,7 @@ export function PosPage() {
           {noCost.length > 0 && <div className="notice notice-danger"><Icon name="alert" /><span>{noCost.length} article(s) sans prix de revient : impossible de calculer le prix interne. Renseignez le prix de revient dans la fiche article (ou retirez-le du panier).</span></div>}
           <div className="summary-box" style={{ maxWidth: 'none' }}>
             <div><span>{fmtNum(count)} article(s)</span><strong className="num">{fmtAr(items)}</strong></div>
-            {!internal && (parseNum(discount) || 0) > 0 && <div><span>Remise</span><strong className="num">− {fmtAr(parseNum(discount))}</strong></div>}
+            {!internal && discAr > 0 && <div><span>Remise{discUnit === 'pct' ? ` (${parseNum(discount)} %)` : ''}</span><strong className="num">− {fmtAr(discAr)}</strong></div>}
             <div className="summary-total"><span>Total</span><strong className="num pos-total">{fmtAr(total)}</strong></div>
           </div>
           {short.length > 0 && <div className="notice notice-danger"><Icon name="alert" /><span>Stock insuffisant pour {short.length} article(s) : diminuez la quantité ou choisissez un autre article.</span></div>}
@@ -258,7 +259,7 @@ function PayDialog({ total, onClose, onPaid }: { total: number; onClose: () => v
         {sum > total && <div className="notice notice-danger"><Icon name="alert" /><span>Le total des paiements dépasse le montant de la vente.</span></div>}
         {cash > 0 && (
           <div className="row" style={{ alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}><TextField label="Espèces données par le client (Ar)" value={given} onChange={setGiven} inputMode="numeric" /></div>
+            <div style={{ flex: 1 }}><TextField label={`Espèces données par le client (${curSym()})`} value={given} onChange={setGiven} inputMode={moneyInputMode()} /></div>
             <div className="total-box" style={{ flex: 1 }}><span className="small muted">Monnaie à rendre</span><strong className={`num ${change < 0 ? 'neg' : ''}`}>{given ? fmtAr(Math.abs(change)) : '—'}</strong>{change < 0 && <span className="small neg">il manque</span>}</div>
           </div>
         )}

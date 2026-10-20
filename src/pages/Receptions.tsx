@@ -1,5 +1,6 @@
 // Réceptions : arrivée des commandes, facture du transit, calcul du coût de revient, entrée en stock.
 import { useMemo, useState } from 'react';
+import { curSym, currency, moneyInputMode } from '../lib/currency';
 import { useCan, currentUser } from '../lib/auth';
 import { get, useTable } from '../lib/db';
 import { fmtAr, fmtNum, nextNumber, parseNum, PURCHASE_STATUS, stockOf, todayYmd, useCatalog, variantLabel, type Product, type Purchase, type Variant } from '../lib/catalog';
@@ -147,18 +148,18 @@ function NewReception({ preselect }: { preselect?: string }) {
             <div className="grid-2">
               <TextField label={inv.mode === 'sea' ? 'Volume facturé (m³)' : 'Poids facturé (kg)'} value={billed} onChange={setBilled} inputMode="decimal" />
               <TextField label={`Tarif par ${UNIT_LABEL[inv.mode]}`} value={tariff} onChange={setTariff} inputMode="decimal" />
-              <SelectField label="Devise du tarif" value={inv.tariffCurrency} onChange={(v) => setInv({ ...inv, tariffCurrency: v as any })} options={[{ value: 'USD', label: 'Dollar (USD)' }, { value: 'RMB', label: 'Yuan (RMB)' }, { value: 'MGA', label: 'Ariary' }]} />
-              {inv.tariffCurrency !== 'MGA' && <TextField label={`Taux de la facture : 1 ${inv.tariffCurrency} = … Ar`} required value={fx} onChange={setFx} inputMode="decimal" error={missingFx ? 'Indiquez le taux de la facture.' : null} />}
+              <SelectField label="Devise du tarif" value={inv.tariffCurrency} onChange={(v) => setInv({ ...inv, tariffCurrency: v as any })} options={[{ value: 'USD', label: 'Dollar (USD)' }, { value: 'RMB', label: 'Yuan (RMB)' }, { value: 'MGA', label: `${currency().name} (${curSym()})` }]} />
+              {inv.tariffCurrency !== 'MGA' && <TextField label={`Taux de la facture : 1 ${inv.tariffCurrency} = … ${curSym()}`} required value={fx} onChange={setFx} inputMode="decimal" error={missingFx ? 'Indiquez le taux de la facture.' : null} />}
               <TextField label="N° de facture (facultatif)" value={inv.invoiceRef ?? ''} onChange={(v) => setInv({ ...inv, invoiceRef: v })} />
               <TextField label="Transitaire (facultatif)" value={inv.forwarder ?? ''} onChange={(v) => setInv({ ...inv, forwarder: v })} />
               <TextField label="Date de réception" type="date" value={date} onChange={setDate} />
             </div>
             <div className="stack-s">
-              <strong className="small">Autres frais (en Ariary)</strong>
+              <strong className="small">Autres frais (en {curSym()})</strong>
               {fees.map((f, i) => (
                 <div key={i} className="row" style={{ flexWrap: 'nowrap' }}>
                   <input className="cell-input" style={{ flex: 2 }} placeholder="Ex. Dédouanement, transport jusqu’à la boutique" aria-label="Libellé" value={f.label} onChange={(e) => setFees(fees.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
-                  <input className="cell-input" style={{ flex: 1 }} inputMode="numeric" placeholder="Montant" aria-label="Montant" value={f.amount} onChange={(e) => setFees(fees.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />
+                  <input className="cell-input" style={{ flex: 1 }} inputMode={moneyInputMode()} placeholder="Montant" aria-label="Montant" value={f.amount} onChange={(e) => setFees(fees.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />
                   <IconButton icon="x" label="Retirer" onClick={() => setFees(fees.filter((_, j) => j !== i))} />
                 </div>
               ))}
@@ -179,7 +180,7 @@ function NewReception({ preselect }: { preselect?: string }) {
               <div className="card-pad"><h2>4. Coût de revient calculé</h2></div>
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>Article</th><th className="t-num">Qté</th><th className="t-num">Achat (Ar)</th><th className="t-num">Transit</th><th className="t-num">Coût de revient</th><th className="t-num">PV détail</th><th className="t-num">Marge</th></tr></thead>
+                  <thead><tr><th>Article</th><th className="t-num">Qté</th><th className="t-num">Achat ({curSym()})</th><th className="t-num">Transit</th><th className="t-num">Coût de revient</th><th className="t-num">PV détail</th><th className="t-num">Marge</th></tr></thead>
                   <tbody>
                     {items.map((i) => {
                       const v = get<Variant>('variants', i.variantId); const prod = v && get<Product>('products', v.productId);
@@ -261,7 +262,7 @@ function ReceptionDetail({ id }: { id: string }) {
           <div><span className="small muted">Pièces reçues</span><strong className="num">{fmtNum(qty)}</strong></div>
           <div><span className="small muted">Mode</span><strong>{MODE_LABEL[inv.mode]}</strong></div>
           {showCost && <div><span className="small muted">Facturé</span><strong className="num">{fmtNum(inv.billedQty, 3)} {UNIT_LABEL[inv.mode]} × {fmtNum(inv.tariff, 2)} {inv.tariffCurrency}</strong></div>}
-          {showCost && inv.tariffCurrency !== 'MGA' && <div><span className="small muted">Taux</span><strong className="num">1 {inv.tariffCurrency} = {fmtNum(inv.fx, 2)} Ar</strong></div>}
+          {showCost && inv.tariffCurrency !== 'MGA' && <div><span className="small muted">Taux</span><strong className="num">1 {inv.tariffCurrency} = {fmtNum(inv.fx, 2)} {curSym()}</strong></div>}
           {showCost && <div><span className="small muted">Total transit et frais</span><strong className="num">{fmtAr(r.transitTotalAr)}</strong></div>}
           <div><span className="small muted">Répartition</span><strong>{r.allocation === 'value' ? 'Par valeur' : 'Par quantité'}</strong></div>
         </div>

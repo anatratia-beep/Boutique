@@ -6,6 +6,7 @@
 // la page devant (« LAMP-LP1-B22-7W »). Son identifiant est tiré de la combinaison : le même article créé sur deux
 // appareils hors ligne ne fait qu'un.
 import { all, get, save } from './db';
+import { curSym } from './currency';
 import { audit } from './auth';
 import { pointBefore } from './restorePoints';
 import { twinFinder, type Twin } from './duplicates';
@@ -156,7 +157,7 @@ export async function saveArticles(cat: Category, rows: ArticleInput[], reason =
 
 // ---------- Modèle Excel par page ----------
 const MARK = 'tsena-categorie:';
-export const FIXED = ['Nom de l’article (facultatif)', 'Prix de revient (Ar)', 'PV détail (Ar)', 'PV gros (Ar)', 'Stock', 'Alerte stock bas'];
+export const FIXED = ['Nom de l’article (facultatif)', `Prix de revient (${curSym()})`, `PV détail (${curSym()})`, `PV gros (${curSym()})`, 'Stock', 'Alerte stock bas'];
 export const PHOTO_COL = 'Photo (image collée dans la ligne, facultatif)';
 
 /** Fichier Excel propre à une page : une colonne par variante (liste déroulante), puis prix et stock. Les articles existants sont déjà remplis. */
@@ -186,7 +187,7 @@ export async function categoryTemplate(cat: Category) {
       'Les articles déjà enregistrés sont pré-remplis : modifiez leurs prix ou leur stock, et ajoutez de nouvelles lignes en dessous.',
       'Nom de l’article : laissez vide, il sera fait avec les codes courts (ex. LP1 B22 7W).',
       'Photo : collez l’image de l’article dans sa ligne (colonne Photo de préférence). Une image posée sur plusieurs lignes fusionnées sert à toutes ces lignes. Sans image, la photo actuelle de l’article est gardée.',
-      'Prix et stock en chiffres, sans espace ni « Ar ». Stock = quantité que vous avez aujourd’hui (pour un article existant, le stock est remis à cette quantité).',
+      `Prix et stock en chiffres, sans espace ni « ${curSym()} ». Stock = quantité que vous avez aujourd’hui (pour un article existant, le stock est remis à cette quantité).`,
       'Une valeur qui manque dans la liste : ajoutez-la d’abord dans Trésor en ligne (Articles et stock → Pages et variantes), puis téléchargez de nouveau ce fichier.',
       'Ne changez pas les titres des colonnes et ne supprimez pas les onglets.',
     ] },

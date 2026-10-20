@@ -1,6 +1,7 @@
 // Articles et stock → Pages et variantes : chaque page (catégorie) avec ses variantes libres, et création des
 // articles à partir des valeurs (un article ou toutes les combinaisons d'un coup). Modèle Excel par page.
 import { useMemo, useRef, useState } from 'react';
+import { moneyInputMode } from '../lib/currency';
 import { compressPhoto, photoBytes } from '../lib/images';
 import { audit, useCan } from '../lib/auth';
 import { get, remove, save, useTable } from '../lib/db';
@@ -347,7 +348,7 @@ export function ArticleBuilder({ cat: initial, onClose }: { cat?: Category; onCl
             <div className="card-sub stack-s">
               <strong className="small">Remplir toutes les lignes nouvelles :</strong>
               <div className="row builder-all">
-                <input className="cell-input" inputMode="numeric" placeholder="Prix de revient" aria-label="Prix de revient pour toutes" value={all4.cost} onChange={(e) => setAll4({ ...all4, cost: e.target.value })} />
+                <input className="cell-input" inputMode={moneyInputMode()} placeholder="Prix de revient" aria-label="Prix de revient pour toutes" value={all4.cost} onChange={(e) => setAll4({ ...all4, cost: e.target.value })} />
                 <input className="cell-input" inputMode="numeric" placeholder="PV détail" aria-label="PV détail pour toutes" value={all4.retail} onChange={(e) => setAll4({ ...all4, retail: e.target.value })} />
                 <input className="cell-input" inputMode="numeric" placeholder="PV gros" aria-label="PV gros pour toutes" value={all4.wholesale} onChange={(e) => setAll4({ ...all4, wholesale: e.target.value })} />
                 <input className="cell-input" inputMode="numeric" placeholder="Stock" aria-label="Stock pour toutes" value={all4.stock} onChange={(e) => setAll4({ ...all4, stock: e.target.value })} />
@@ -369,7 +370,7 @@ export function ArticleBuilder({ cat: initial, onClose }: { cat?: Category; onCl
                     <td><input type="checkbox" aria-label={`Créer ${parts.name}`} checked={l.on} disabled={l.exists} onChange={(e) => setLine(l.key, { on: e.target.checked })} /></td>
                     <td><input className="cell-input" aria-label="Nom de l’article" value={l.name} disabled={l.exists} onChange={(e) => setLine(l.key, { name: e.target.value })} />
                       <div className="small muted">{parts.code}{l.exists ? ' · existe déjà' : ''}<br />{parts.label}</div></td>
-                    {(['cost', 'retail', 'wholesale', 'stock'] as const).map((k) => <td key={k}><input className="cell-input num-input" inputMode="numeric" aria-label={`${k} ${parts.name}`} disabled={l.exists || !l.on} value={l[k]} placeholder={k === 'wholesale' ? '= détail' : k === 'stock' ? '0' : ''} onChange={(e) => setLine(l.key, { [k]: e.target.value })} /></td>)}
+                    {(['cost', 'retail', 'wholesale', 'stock'] as const).map((k) => <td key={k}><input className="cell-input num-input" inputMode={k === 'stock' ? 'numeric' : moneyInputMode()} aria-label={`${k} ${parts.name}`} disabled={l.exists || !l.on} value={l[k]} placeholder={k === 'wholesale' ? '= détail' : k === 'stock' ? '0' : ''} onChange={(e) => setLine(l.key, { [k]: e.target.value })} /></td>)}
                   </tr>
                 );
               })}</tbody>

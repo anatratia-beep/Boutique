@@ -1,5 +1,6 @@
 // Livraisons : commandes prêtes par axe, en cours par livreur, comptes des livreurs, zones et frais.
 import { allPages } from '../lib/boosts';
+import { fmtMoney, curSym, moneyInputMode } from '../lib/currency';
 import { variantPage } from '../lib/scope';
 import { useMemo, useState } from 'react';
 import { audit, useCan } from '../lib/auth';
@@ -17,7 +18,7 @@ import { useMyScope } from '../lib/scope';
 import { ScopeBar } from '../ui/scope';
 import { deliveryNoteDoc, joinDocs, parcelLabelDoc, routeSheetDoc } from '../lib/print';
 import { PrintButton } from '../ui/print';
-import { ACCOUNTS, ACCOUNT_IDS, FEE_STATE, courierBalance, courierRemovalBlockers, removeCourier, deferredOrders, deliveryNet, feeState, payDeferredFees, settleCourier, type AccountId, type CourierSettlement } from '../lib/money';
+import { ACCOUNTS, accountIds, FEE_STATE, courierBalance, courierRemovalBlockers, removeCourier, deferredOrders, deliveryNet, feeState, payDeferredFees, settleCourier, type AccountId, type CourierSettlement } from '../lib/money';
 
 const TABS = [
   { key: 'livreurs', label: 'Comptes livreurs', perm: 'couriers.view' },
@@ -370,8 +371,8 @@ function SettleModal({ courier, onClose }: { courier: Courier; onClose: () => vo
           <div className="card stat"><span className="small muted">Reporté (non cochées)</span><strong className="stat-value num">{fmtAr(b.pendingCollect - selCollect)}</strong></div>
         </div>
         <div className="grid-2">
-          <TextField label={owesShop ? 'Montant versé par le livreur (Ar)' : 'Montant versé au livreur (Ar)'} value={amount ?? String(Math.abs(expected) || '')} onChange={setAmount} inputMode="numeric" />
-          <SelectField label={owesShop ? 'Argent reçu sur' : 'Payé depuis'} value={account} onChange={(v) => setAccount(v as AccountId)} options={ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))} />
+          <TextField label={owesShop ? `Montant versé par le livreur (${curSym()})` : `Montant versé au livreur (${curSym()})`} value={amount ?? String(Math.abs(expected) || '')} onChange={setAmount} inputMode={moneyInputMode()} />
+          <SelectField label={owesShop ? 'Argent reçu sur' : 'Payé depuis'} value={account} onChange={(v) => setAccount(v as AccountId)} options={accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))} />
         </div>
         <TextField label="Note (remarques du ticket, facultatif)" value={note} onChange={setNote} />
         <TextField label="Date réelle du versement" type="date" required value={day} onChange={(v) => setRetDay(v || null)} error={dayError || null} hint="Par défaut, le jour de départ des livraisons cochées : le compte du livreur et la caisse restent à cette date." />
@@ -427,7 +428,7 @@ function CourierOrders({ courier, onClose }: { courier: Courier; onClose: () => 
       {pay && <Confirm title={`Payer les frais de ${courier.name}`} confirmLabel="Enregistrer le paiement" onClose={() => setPay(null)}
         onConfirm={async () => { const os = pay === 'all' ? deferred : [pay]; const amt = os.reduce((t, o) => t + courierSplit(o).fee, 0); await payDeferredFees(courier, amt, acc, os); toast(`${fmtAr(amt)} de frais payés à ${courier.name}`); }}
         message={<div className="stack-s"><p>{pay === 'all' ? `${deferred.length} livraison(s) : ${fmtAr(deferredSum)} de frais différés.` : `Frais de ${pay.number} : ${fmtAr(courierSplit(pay).fee)}.`}</p>
-          <SelectField label="Payé depuis" value={acc} onChange={(v) => setAcc(v as AccountId)} options={ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))} /></div>} />}
+          <SelectField label="Payé depuis" value={acc} onChange={(v) => setAcc(v as AccountId)} options={accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))} /></div>} />}
     </Modal>
   );
 }
@@ -531,14 +532,14 @@ function ZoneForm({ zone, count, onClose }: { zone?: Zone; count: number; onClos
         if (!pickup && !(f != null && f > 0)) return setError('Indiquez les frais de livraison de cette zone.');
         setBusy(true);
         await save('zones', { id: zone?.id, name: name.trim(), fee: f ?? 0, pickup: pickup || undefined, active, order: zone?.order ?? count });
-        await audit(zone ? 'Zone modifiée' : 'Zone ajoutée', `${name.trim()} — ${f ?? 0} Ar`);
+        await audit(zone ? 'Zone modifiée' : 'Zone ajoutée', `${name.trim()} — ${fmtMoney(f ?? 0)}`);
         toast(zone ? 'Zone modifiée' : 'Zone ajoutée');
         setBusy(false); onClose();
       }}>{zone ? 'Enregistrer' : 'Ajouter la zone'}</Button></>}>
       <div className="stack">
         <TextField label="Nom de la zone / de l’axe" required value={name} onChange={setName} placeholder="Ex. Ivandry – Ambatobe" autoFocus />
-        {!pickup && <TextField label="Frais de livraison (Ar)" required value={fee} onChange={setFee} inputMode="numeric" placeholder="Ex. 4000" />}
-        <Toggle checked={pickup} onChange={setPickup} disabled={fixedPickup} label="Sur boutique (le client vient chercher : 0 Ar, sans livreur)" />
+        {!pickup && <TextField label={`Frais de livraison (${curSym()})`} required value={fee} onChange={setFee} inputMode={moneyInputMode()} placeholder="Ex. 4000" />}
+        <Toggle checked={pickup} onChange={setPickup} disabled={fixedPickup} label={`Sur boutique (le client vient chercher : 0 ${curSym()}, sans livreur)`} />
         {zone && <Toggle checked={active} onChange={setActive} label="Zone active (décochez pour la masquer dans les commandes)" />}
         {error && <div className="notice notice-danger"><Icon name="alert" /><span>{error}</span></div>}
       </div>

@@ -1,6 +1,7 @@
 // Situation par page (accueil) : ventes, argent reçu par moyen de paiement, reste à payer, annulations, échanges et
 // livraisons reportées, sur une période. Un vendeur ne voit que ses pages ; le gérant voit toutes les pages.
 import { all, get } from './db';
+import { zeroByMethod } from './paymethods';
 import { salesLedger } from './analytics';
 import { rootOf, variantPage } from './scope';
 import { dayOf } from './money';
@@ -11,7 +12,7 @@ export interface PageSit {
   id: string; name: string;
   /** Total des commandes de la période = ventes + annulé + reporté. */
   gross: number;
-  /** Ventes (net) = espèces + MVola + Orange + Airtel + reste à payer. */
+  /** Ventes (net) = paiements (espèces, mobile money…) + reste à payer. */
   sales: number; qty: number; orders: number;
   pay: Record<PayMethod, number>; paid: number;
   rest: number; restN: number;
@@ -20,7 +21,7 @@ export interface PageSit {
   exchange: number; exchangeN: number;
   reported: number; reportedN: number;
 }
-const empty = (id: string, name: string): PageSit => ({ id, name, gross: 0, sales: 0, qty: 0, orders: 0, pay: { cash: 0, mvola: 0, orange: 0, airtel: 0 }, paid: 0, rest: 0, restN: 0, cancelled: 0, cancelledN: 0, exchange: 0, exchangeN: 0, reported: 0, reportedN: 0 });
+const empty = (id: string, name: string): PageSit => ({ id, name, gross: 0, sales: 0, qty: 0, orders: 0, pay: zeroByMethod(), paid: 0, rest: 0, restN: 0, cancelled: 0, cancelledN: 0, exchange: 0, exchangeN: 0, reported: 0, reportedN: 0 });
 const inRange = (iso: string | undefined, from: string, to: string) => { if (!iso) return false; const d = dayOf(iso); return d >= from && d <= to; };
 
 /** Part de chaque page dans une commande (valeur des articles) : sert à répartir annulations et reports. */
@@ -65,7 +66,7 @@ export function situation(from: string, to: string, pages?: string[]) {
     for (const [p, q] of qty) if (keep(p)) row(p).qty += q;
     if (sold <= 0.5) { for (const [p, a] of pg) if (keep(p)) row(p).sales += a; continue; } // retour d'une vente d'un autre jour
     // Paiements de cette vente, répartis par moyen ; ce qui dépasse la valeur des articles (frais de livraison) n'est pas compté.
-    const byM: Record<PayMethod, number> = { cash: 0, mvola: 0, orange: 0, airtel: 0 };
+    const byM: Record<PayMethod, number> = zeroByMethod();
     for (const pay of o.payments || []) byM[pay.method] = (byM[pay.method] ?? 0) + pay.amount;
     const paidAll = Math.max(0, Object.values(byM).reduce((s, x) => s + x, 0));
     const counted = Math.min(paidAll, sold);
@@ -75,7 +76,7 @@ export function situation(from: string, to: string, pages?: string[]) {
       if (!keep(p)) continue; mine = true;
       const f = a / sold; const r = row(p);
       r.sales += a;
-      for (const m of Object.keys(byM) as PayMethod[]) { const v = paidAll ? (byM[m] / paidAll) * counted * f : 0; r.pay[m] += v; r.paid += v; }
+      for (const m of Object.keys(byM) as PayMethod[]) { const v = paidAll ? (byM[m] / paidAll) * counted * f : 0; r.pay[m] = (r.pay[m] || 0) + v; r.paid += v; }
       const rest = (sold - counted) * f; if (rest > 0.5) { r.rest += rest; r.restN++; }
       if (isEx) { r.exchange += a; r.exchangeN++; }
       r.orders++;

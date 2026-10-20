@@ -1,5 +1,6 @@
 // Achats en Chine : commandes fournisseurs, suivi, paiements, fournisseurs.
 import { useMemo, useState } from 'react';
+import { fmtMoney, curSym, currency as shopCurrency, roundMoney, moneyInputMode } from '../lib/currency';
 import { audit, useCan } from '../lib/auth';
 import { get, newId, remove, save, useTable } from '../lib/db';
 import {
@@ -11,7 +12,7 @@ import { Badge, Button, Confirm, Empty, IconButton, Modal, PageHead, SelectField
 import { ListDates, applyDates, defaultPeriod, type ListOrder, type Period } from '../ui/period';
 import { Icon } from '../ui/icons';
 import { voidPurchase } from '../lib/corrections';
-import { ACCOUNTS, ACCOUNT_IDS, addMove, atFor, type AccountId } from '../lib/money';
+import { ACCOUNTS, accountIds, addMove, atFor, type AccountId } from '../lib/money';
 import { ProductForm, Thumb } from './Products';
 
 const money = (n: number, cur: 'RMB' | 'MGA') => cur === 'RMB' ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ¥` : fmtAr(n);
@@ -179,7 +180,7 @@ function PurchaseDetail({ id }: { id: string }) {
           <div><span className="small muted">N° de suivi</span><strong>{p.trackingNo || '—'}</strong></div>
           <div><span className="small muted">Transitaire</span><strong>{p.forwarder || '—'}</strong></div>
           <div><span className="small muted">Pièces</span><strong className="num">{fmtNum(purchaseReceivedQty(p))} / {fmtNum(purchaseQty(p))} reçues</strong></div>
-          {showCost && <div><span className="small muted">Taux</span><strong className="num">{p.currency === 'RMB' ? `1 ¥ = ${fmtNum(p.rate, 2)} Ar` : 'Ariary'}</strong></div>}
+          {showCost && <div><span className="small muted">Taux</span><strong className="num">{p.currency === 'RMB' ? `1 ¥ = ${fmtNum(p.rate, 2)} ${curSym()}` : shopCurrency().name}</strong></div>}
         </div>
         {p.link && <a className="small" href={p.link} target="_blank" rel="noreferrer">Ouvrir le lien de la commande</a>}
         {p.notes && <p className="small">{p.notes}</p>}
@@ -271,7 +272,7 @@ function PaymentModal({ purchase, onClose }: { purchase: Purchase; onClose: () =
   const [note, setNote] = useState('');
   const [account, setAccount] = useState<AccountId | ''>('');
   const [ar, setAr] = useState('');
-  const arAuto = currency === 'MGA' ? parseNum(amount) || 0 : Math.round((parseNum(amount) || 0) * (purchase.rate || 0));
+  const arAuto = currency === 'MGA' ? parseNum(amount) || 0 : roundMoney((parseNum(amount) || 0) * (purchase.rate || 0));
   return (
     <Modal title="Paiement au fournisseur" onClose={onClose}
       footer={<><Button variant="ghost" onClick={onClose}>Annuler</Button><Button disabled={!parseNum(amount)} onClick={async () => {
@@ -287,14 +288,14 @@ function PaymentModal({ purchase, onClose }: { purchase: Purchase; onClose: () =
       <div className="stack">
         <div className="grid-2">
           <TextField label="Montant" required value={amount} onChange={setAmount} inputMode="decimal" />
-          <SelectField label="Devise" value={currency} onChange={(v) => setCurrency(v as any)} options={[{ value: 'RMB', label: 'RMB (¥)' }, { value: 'MGA', label: 'Ariary' }]} />
+          <SelectField label="Devise" value={currency} onChange={(v) => setCurrency(v as any)} options={[{ value: 'RMB', label: 'RMB (¥)' }, { value: 'MGA', label: `${shopCurrency().name} (${curSym()})` }]} />
           <TextField label="Date" type="date" value={date} onChange={setDate} />
           <SelectField label="Moyen" value={method} onChange={setMethod} options={['Alipay / agent', 'Virement bancaire', 'Espèces', 'MVola', 'Orange Money', 'Airtel Money', 'Autre'].map((m) => ({ value: m, label: m }))} />
         </div>
         <TextField label="Note (facultatif)" value={note} onChange={setNote} />
         <div className="grid-2">
-          <SelectField label="Sorti de la trésorerie" value={account} onChange={(v) => setAccount(v as AccountId | '')} options={[{ value: '', label: 'Non (payé hors caisse, ex. par un agent)' }, ...ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))]} />
-          {account && <TextField label="Montant sorti en Ariary" value={ar} onChange={setAr} inputMode="numeric" placeholder={String(arAuto)} hint={currency === 'RMB' ? `Au taux de la commande : ${arAuto.toLocaleString('fr-FR')} Ar` : undefined} />}
+          <SelectField label="Sorti de la trésorerie" value={account} onChange={(v) => setAccount(v as AccountId | '')} options={[{ value: '', label: 'Non (payé hors caisse, ex. par un agent)' }, ...accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))]} />
+          {account && <TextField label={`Montant sorti en ${curSym()}`} value={ar} onChange={setAr} inputMode={moneyInputMode()} placeholder={String(arAuto)} hint={currency === 'RMB' ? `Au taux de la commande : ${fmtMoney(arAuto)}` : undefined} />}
         </div>
       </div>
     </Modal>
@@ -325,7 +326,7 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
   async function submit() {
     setError(null);
     if (!lines.length) return setError('Ajoutez au moins un article.');
-    if (currency === 'RMB' && !parseNum(rate)) return setError('Indiquez le taux du RMB (combien d’Ariary pour 1 ¥).');
+    if (currency === 'RMB' && !parseNum(rate)) return setError('Indiquez le taux du RMB (combien de ${curSym()} pour 1 ¥).');
     if (lines.some((l) => l.qtyOrdered <= 0)) return setError('Chaque ligne doit avoir une quantité.');
     setBusy(true);
     try {
@@ -372,10 +373,10 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
         </div>
         <div className="card stack" style={{ background: 'var(--surface-2)' }}>
           <div className="grid-2">
-            <SelectField label="Devise des prix" value={currency} onChange={(v) => setCurrency(v as any)} options={[{ value: 'RMB', label: 'RMB (yuan ¥)' }, { value: 'MGA', label: 'Ariary' }]} />
-            {currency === 'RMB' && <TextField label="Taux : 1 ¥ = … Ar" required value={rate} onChange={setRate} inputMode="decimal" hint="Modifiable à tout moment." />}
-            <TextField label={`Frais de livraison en Chine (${currency === 'RMB' ? '¥' : 'Ar'})`} value={chinaFees} onChange={setChinaFees} inputMode="decimal" hint="Répartis sur chaque pièce." />
-            <TextField label={`Remise (${currency === 'RMB' ? '¥' : 'Ar'})`} value={discount} onChange={setDiscount} inputMode="decimal" />
+            <SelectField label="Devise des prix" value={currency} onChange={(v) => setCurrency(v as any)} options={[{ value: 'RMB', label: 'RMB (yuan ¥)' }, { value: 'MGA', label: `${shopCurrency().name} (${curSym()})` }]} />
+            {currency === 'RMB' && <TextField label={`Taux : 1 ¥ = … ${curSym()}`} required value={rate} onChange={setRate} inputMode="decimal" hint="Modifiable à tout moment." />}
+            <TextField label={`Frais de livraison en Chine (${currency === 'RMB' ? '¥' : curSym()})`} value={chinaFees} onChange={setChinaFees} inputMode="decimal" hint="Répartis sur chaque pièce." />
+            <TextField label={`Remise (${currency === 'RMB' ? '¥' : curSym()})`} value={discount} onChange={setDiscount} inputMode="decimal" />
           </div>
         </div>
 
@@ -383,7 +384,7 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
         {lines.length === 0 ? <Empty icon="store" title="Aucun article dans la commande" /> : (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Article</th><th style={{ width: 110 }}>Quantité</th><th style={{ width: 130 }}>Prix unitaire ({currency === 'RMB' ? '¥' : 'Ar'})</th><th className="t-num">Montant</th><th></th></tr></thead>
+              <thead><tr><th>Article</th><th style={{ width: 110 }}>Quantité</th><th style={{ width: 130 }}>Prix unitaire ({currency === 'RMB' ? '¥' : curSym()})</th><th className="t-num">Montant</th><th></th></tr></thead>
               <tbody>
                 {[...grouped.entries()].map(([pid, ls]) => ls.map((l, i) => {
                   const prod = get<Product>('products', pid); const v = get<Variant>('variants', l.variantId);
@@ -451,7 +452,7 @@ function LinePicker({ currency, onClose, onAdd }: { currency: 'RMB' | 'MGA'; onC
         </div>
       ) : (
         <div className="stack">
-          <TextField label={`Prix unitaire (${currency === 'RMB' ? '¥' : 'Ar'})`} value={price} onChange={setPrice} inputMode="decimal" autoFocus hint="Le même pour toutes les variantes. Modifiable ensuite ligne par ligne." />
+          <TextField label={`Prix unitaire (${currency === 'RMB' ? '¥' : curSym()})`} value={price} onChange={setPrice} inputMode="decimal" autoFocus hint="Le même pour toutes les variantes. Modifiable ensuite ligne par ligne." />
           <div className="variant-grid">
             {variants.map((v) => (
               <label key={v.id} className="variant-cell">

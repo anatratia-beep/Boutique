@@ -11,6 +11,8 @@
 //   Le mobile money arrive sur les numéros de la boutique : il est affiché pour contrôle, mais pas à remettre.
 // Le responsable saisit le montant réellement reçu et valide : le versement est tracé (montant, écart, qui, quand).
 import { all, get, getMeta, save, type BaseRecord } from './db';
+import { allNonCashIds, zeroByMethod } from './paymethods';
+import { fmtMoney, roundMoney } from './currency';
 import { audit, currentUser, roleOf, type User } from './auth';
 import { salesLedger } from './analytics';
 import { rootOf } from './scope';
@@ -23,6 +25,8 @@ export interface Handover extends BaseRecord {
   userId: string; userName: string; date: string;
   sales: number; perPage: { pageId: string; name: string; sales: number }[];
   cash: number; mvola: number; orange: number; airtel: number;
+  /** Paiements du jour par moyen (tous les moyens de la boutique). Les champs ci-dessus restent pour l'historique. */
+  byMethod?: Record<string, number>;
   fees: number; expenses: number;
   expected: number;        // total à payer calculé au moment de la validation
   amount: number;          // montant réellement remis au responsable
@@ -65,13 +69,13 @@ export function sellerDay(u: User, date: string): SellerDay {
     pages.set(p, (pages.get(p) ?? 0) + l.amount); sales += l.amount;
     if (l.kind === 'sale') seen.add(l.order.id);
   }
-  const pay: Record<PayMethod, number> = { cash: 0, mvola: 0, orange: 0, airtel: 0 };
+  const pay: Record<PayMethod, number> = zeroByMethod();
   let shopCash = 0, courierCash = 0, fees = 0, outParcels = 0;
   for (const o of all<Order>('orders')) {
     if (!isMine(o, u)) continue;
     for (const p of o.payments || []) {
       if (dayOf(p.at) !== date) continue;
-      pay[p.method] += p.amount;
+      pay[p.method] = (pay[p.method] || 0) + p.amount;
       if (p.method === 'cash') { if (p.receivedBy === 'courier') courierCash += p.amount; else shopCash += p.amount; }
     }
     if (o.status === 'out') outParcels++;
@@ -84,7 +88,7 @@ export function sellerDay(u: User, date: string): SellerDay {
   const h = handoverOf(u.id, date);
   return {
     user: u, date, pages: list, sales, orders: seen.size, pay, shopCash, courierCash, fees, expenses, expenseMoves,
-    toPay: pay.cash - fees - expenses, mobile: pay.mvola + pay.orange + pay.airtel, outParcels,
+    toPay: pay.cash - fees - expenses, mobile: allNonCashIds().reduce((t, m) => t + (pay[m] || 0), 0), outParcels,
     handover: h?.status === 'received' ? h : undefined,
   };
 }
@@ -107,7 +111,7 @@ export async function receiveHandover(d: SellerDay, amount: number, note?: strin
   const gap = amount - d.toPay;
   await save('handovers', {
     id: handoverId(d.user.id, d.date), userId: d.user.id, userName: d.user.fullName, date: d.date,
-    sales: d.sales, perPage: d.pages, cash: d.pay.cash, mvola: d.pay.mvola, orange: d.pay.orange, airtel: d.pay.airtel,
+    sales: d.sales, perPage: d.pages, cash: d.pay.cash || 0, mvola: d.pay.mvola || 0, orange: d.pay.orange || 0, airtel: d.pay.airtel || 0, byMethod: d.pay,
     fees: d.fees, expenses: d.expenses, expected: d.toPay, amount, gap, note: note || undefined,
     byId: me?.id, byName: me?.fullName, at: new Date().toISOString(), device: getMeta('deviceName', '') || undefined,
     status: 'received', cancelledBy: undefined, cancelledAt: undefined, cancelReason: undefined, deleted: false,
@@ -125,6 +129,6 @@ export async function cancelHandover(h: Handover, reason: string) {
 export const handoverHistory = (userId?: string) => all<Handover>('handovers').filter((h) => !userId || h.userId === userId).sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at));
 
 /** Le calcul a changé depuis la validation (vente ou dépense ajoutée ensuite). */
-export const changedSince = (d: SellerDay) => !!d.handover && Math.round(d.handover.expected) !== Math.round(d.toPay);
+export const changedSince = (d: SellerDay) => !!d.handover && roundMoney(d.handover.expected) !== roundMoney(d.toPay);
 
-const ar = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} Ar`;
+const ar = (n: number) => `${fmtMoney(n)}`;

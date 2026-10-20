@@ -16,6 +16,8 @@ export interface Company extends BaseRecord {
   bossPhone?: string;   // WhatsApp du patron (récapitulatif)
   bossEmail?: string;
   autoLockMinutes: number;
+  currency?: string;         // code de la devise (MGA par défaut) — voir lib/currency.ts
+  currencySymbol?: string;   // symbole personnalisé (facultatif)
   wholesaleMinQty?: number;
   usdRate?: number;          // taux du dollar (Ar) pour convertir la dépense des boosts
   targetDay?: number;        // objectif de chiffre d'affaires par jour (Ar)

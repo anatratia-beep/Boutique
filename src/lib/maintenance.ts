@@ -1,6 +1,7 @@
 // Outils : réinitialisation par e-mail, sauvegardes automatiques avec conservation, effacement des données de test,
 // vérification de la cohérence, export complet en Excel, code PIN de déverrouillage.
 import { all, get, getMeta, save, setMeta, TABLES, type BaseRecord, type TableName } from './db';
+import { fmtMoney } from './currency';
 import { audit, currentUser, managesOwnPassword, type User } from './auth';
 import { hashSecret, verifySecret } from './crypto';
 import { getCloud, syncNow } from './sync';
@@ -203,10 +204,10 @@ export function checkData(): Issue[] {
   issues.push({ key: 'nocourier', title: 'Commandes en livraison sans livreur', level: outNoCourier.length ? 'warn' : 'ok', detail: outNoCourier.length ? 'Ouvrez-les et utilisez « Changer » pour leur attribuer un livreur.' : 'Toutes les livraisons en cours ont un livreur.', items: outNoCourier.map((o) => o.number) });
 
   const over = orders.filter((o) => o.status !== 'cancelled' && remaining(o) < 0);
-  issues.push({ key: 'over', title: 'Clients ayant trop payé', level: over.length ? 'info' : 'ok', detail: over.length ? 'Ouvrez la commande et utilisez « Rendre l’argent au client », ou corrigez le paiement.' : 'Aucun trop-perçu.', items: over.map((o) => `${o.number} : ${(-remaining(o)).toLocaleString('fr-FR')} Ar`) });
+  issues.push({ key: 'over', title: 'Clients ayant trop payé', level: over.length ? 'info' : 'ok', detail: over.length ? 'Ouvrez la commande et utilisez « Rendre l’argent au client », ou corrigez le paiement.' : 'Aucun trop-perçu.', items: over.map((o) => `${o.number} : ${fmtMoney((-remaining(o)))}`) });
 
   const unpaid = orders.filter((o) => ['delivered', 'partial'].includes(o.status) && remaining(o) > 0);
-  issues.push({ key: 'unpaid', title: 'Commandes livrées pas entièrement payées', level: unpaid.length ? 'info' : 'ok', detail: unpaid.length ? 'Reste à encaisser sur des commandes terminées.' : 'Toutes les commandes livrées sont payées.', items: unpaid.map((o) => `${o.number} : ${remaining(o).toLocaleString('fr-FR')} Ar`) });
+  issues.push({ key: 'unpaid', title: 'Commandes livrées pas entièrement payées', level: unpaid.length ? 'info' : 'ok', detail: unpaid.length ? 'Reste à encaisser sur des commandes terminées.' : 'Toutes les commandes livrées sont payées.', items: unpaid.map((o) => `${o.number} : ${fmtMoney(remaining(o))}`) });
 
   const seen = new Map<string, number>();
   for (const o of orders) seen.set(o.number, (seen.get(o.number) ?? 0) + 1);

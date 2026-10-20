@@ -1,5 +1,6 @@
 // Lots et promotions : création, fiche, choix des couleurs à la vente, prix par quantité, lignes « prix du lot ».
 import { useState } from 'react';
+import { curSym, moneyInputMode, fmtMoney } from '../lib/currency';
 import { audit, useCan } from '../lib/auth';
 import { get, newId, save } from '../lib/db';
 import { categoryPath, fmtAr, matchQuery, parseNum, productText, productVariants, stockOf, useCatalog, variantLabel, photoOf, type Product, searchItems } from '../lib/catalog';
@@ -82,7 +83,7 @@ export function LotForm({ lot, onClose, onSaved }: { lot?: Product; onClose: () 
           <TextField label="Nom du lot" required value={name} onChange={setName} placeholder="Ex. Pack 3 pyjamas, Lampe + porte-clé offert" />
           <TextField label="Code" value={code} onChange={setCode} placeholder="Automatique si vide" autoCapitalize="characters" />
           <SelectField label="Page" value={categoryId} onChange={setCategoryId} options={categoryOptions(categories, 'Sans page')} />
-          <TextField label="Prix du lot (Ar)" required value={price} onChange={setPrice} inputMode="numeric" />
+          <TextField label={`Prix du lot (${curSym()})`} required value={price} onChange={setPrice} inputMode={moneyInputMode()} />
         </div>
 
         <div className="card stack-s" style={{ background: 'var(--surface-2)' }}>
@@ -265,13 +266,13 @@ export function TierEditor({ tiers, onChange, unit }: { tiers: PriceTier[]; onCh
   return (
     <div className="card stack-s" style={{ background: 'var(--surface-2)' }}>
       <h3>Prix par quantité (facultatif)</h3>
-      <Help>Ex. 1 pièce {unit ? fmtAr(unit) : '20 000 Ar'}, mais 3 pièces pour 50 000 Ar. Appliqué tout seul à la vente quand le client prend la quantité (couleurs et tailles mélangées). Si le client rend une partie à la livraison, le reste repasse au prix normal.</Help>
+      <Help>Ex. 1 pièce {unit ? fmtAr(unit) : `20 000 ${curSym()}`}, mais 3 pièces pour {fmtMoney(50000)}. Appliqué tout seul à la vente quand le client prend la quantité (couleurs et tailles mélangées). Si le client rend une partie à la livraison, le reste repasse au prix normal.</Help>
       {tiers.map((t, i) => (
         <div key={i} className="row tier-row">
           <input className="cell-input qty-input" inputMode="numeric" aria-label="Nombre de pièces" value={t.qty || ''} onChange={(e) => onChange(tiers.map((x, j) => (j === i ? { ...x, qty: Number(e.target.value.replace(/\D/g, '')) || 0 } : x)))} />
           <span className="small">pièces pour</span>
-          <input className="cell-input" style={{ maxWidth: 130 }} inputMode="numeric" aria-label="Prix du paquet (Ar)" value={t.price || ''} onChange={(e) => onChange(tiers.map((x, j) => (j === i ? { ...x, price: parseNum(e.target.value) || 0 } : x)))} />
-          <span className="small">Ar{unit && t.qty > 1 && t.price ? <span className="muted"> (au lieu de {fmtAr(unit * t.qty)})</span> : null}</span>
+          <input className="cell-input" style={{ maxWidth: 130 }} inputMode={moneyInputMode()} aria-label={`Prix du paquet (${curSym()})`} value={t.price || ''} onChange={(e) => onChange(tiers.map((x, j) => (j === i ? { ...x, price: parseNum(e.target.value) || 0 } : x)))} />
+          <span className="small">{curSym()}{unit && t.qty > 1 && t.price ? <span className="muted"> (au lieu de {fmtAr(unit * t.qty)})</span> : null}</span>
           <IconButton icon="x" label="Retirer ce prix" onClick={() => onChange(tiers.filter((_, j) => j !== i))} />
         </div>
       ))}

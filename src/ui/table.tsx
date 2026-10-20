@@ -1,5 +1,6 @@
 // Tableau triable (clic sur l'en-tête) avec ligne de total et export Excel.
 import { useMemo, useState, type ReactNode } from 'react';
+import { curSym, fmtMoney } from '../lib/currency';
 import { downloadBlob, writeXlsx, type Cell } from '../lib/xlsx';
 import { Button } from './kit';
 
@@ -15,7 +16,7 @@ export interface Col<T> {
   width?: number;                             // largeur Excel
 }
 
-const fmt = (v: number | string, money?: boolean) => (typeof v === 'number' ? (money ? Math.round(v).toLocaleString('fr-FR') + ' Ar' : v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })) : v);
+const fmt = (v: number | string, money?: boolean) => (typeof v === 'number' ? (money ? fmtMoney(v) : v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })) : v);
 
 export function SortTable<T>({ cols, rows, empty = 'Aucune donnée sur la période', initialSort, limit, rowKey }: { cols: Col<T>[]; rows: T[]; empty?: string; initialSort?: { key: string; desc?: boolean }; limit?: number; rowKey: (r: T) => string }) {
   const shown = cols.filter((c) => !c.hide);
@@ -63,7 +64,7 @@ export async function exportTables(filename: string, sheets: { name: string; col
     const cols = s.cols.filter((c) => !c.hide);
     return {
       name: s.name,
-      columns: cols.map((c) => ({ header: c.label + (c.money ? ' (Ar)' : ''), width: c.width ?? (c.num || c.money ? 14 : 24), number: c.num || c.money })),
+      columns: cols.map((c) => ({ header: c.label + (c.money ? ` (${curSym()})` : ''), width: c.width ?? (c.num || c.money ? 14 : 24), number: c.num || c.money })),
       rows: s.rows.map((r) => cols.map((c) => { const v = c.value(r); return (typeof v === 'number' ? Math.round(v * 100) / 100 : v) as Cell; })),
       notes: s.notes,
     };

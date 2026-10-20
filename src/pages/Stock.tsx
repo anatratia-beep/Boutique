@@ -1,5 +1,6 @@
 // Stock : état par variante, valeur, mouvements filtrables, inventaire physique.
 import { useMyScope } from '../lib/scope';
+import { curSym } from '../lib/currency';
 import { ScopeBar } from '../ui/scope';
 import { useMemo, useState } from 'react';
 import { audit, useCan, type User } from '../lib/auth';
@@ -99,7 +100,7 @@ function StockState() {
     const blob = await writeXlsx([{
       name: 'Stock',
       columns: [{ header: 'Catégorie', width: 22 }, { header: 'Code article', width: 14 }, { header: 'Article', width: 36 }, { header: 'Couleur', width: 14 }, { header: 'Taille', width: 9 }, { header: 'Code variante', width: 22 }, { header: 'Stock', width: 9, number: true }, { header: 'Réservé (commandes en cours)', width: 14, number: true }, { header: 'Disponible', width: 11, number: true }, { header: 'En arrivage', width: 11, number: true }, { header: `Vendus ${SALES_DAYS} j`, width: 11, number: true }, { header: 'Jours pour écouler', width: 12 }, { header: 'Marque', width: 14 },
-        ...(showCost ? [{ header: 'Coût moyen (Ar)', width: 14, number: true }, { header: 'Valeur (Ar)', width: 14, number: true }] : [])],
+        ...(showCost ? [{ header: `Coût moyen (${curSym()})`, width: 14, number: true }, { header: `Valeur (${curSym()})`, width: 14, number: true }] : [])],
       rows: rows.map((r) => [categoryPath(r.p!.categoryId), r.p!.code, r.p!.name, r.v.color ?? '', r.v.size ?? '', r.v.sku, r.stock, r.held, r.stock - r.held, r.incoming, r.sold, coverText(r.cover), r.health ? HEALTH[r.health].label : '', ...(showCost ? [Math.round(r.v.costAvg ?? 0), Math.round(r.value)] : [])]),
     }]);
     downloadBlob(blob, `Tresor-en-ligne-stock-${new Date().toISOString().slice(0, 10)}.xlsx`);

@@ -2,6 +2,7 @@
 // - saisie des dépenses du jour payées avec la caisse commune (compte « Caisse espèces ») ;
 // - récapitulatif global du jour (tous les vendeurs) à envoyer par WhatsApp au gérant et au patron.
 import { useEffect, useRef, useState } from 'react';
+import { curSym, moneyInputMode } from '../lib/currency';
 import { recapSent, recapTime, scrollToRecap } from '../ui/eveningRecap';
 import { audit, useCan, useCurrentUser } from '../lib/auth';
 import { useTable } from '../lib/db';
@@ -97,7 +98,7 @@ function Expenses({ date, moves, total, mine: onlyMine }: { date: string; moves:
       {isToday && !closed && (
         <div className="card-pad stack-s daycash-form">
           <div className="grid-2">
-            <TextField label="Montant de la dépense (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" />
+            <TextField label={`Montant de la dépense (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} />
             <SelectField label="Catégorie" value={catId} onChange={setCat} options={cats.map((c) => ({ value: c.id, label: c.name }))} />
           </div>
           <TextField label="Description (ex. taxi livraison Analakely)" required value={label} onChange={setLabel} />

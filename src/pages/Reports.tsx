@@ -1,8 +1,9 @@
 // Rapports : résultat (bénéfice / perte), journal des ventes, articles, clients, livreurs, vendeurs, stock, achats.
 import { useMemo, useState } from 'react';
+import { fmtMoney, curSym } from '../lib/currency';
 import { useCan } from '../lib/auth';
 import { all, get, useTable } from '../lib/db';
-import { categoryPath, fmtAr, stockOf, variantCost, type Category, type Product, type Purchase, type Variant, PURCHASE_STATUS } from '../lib/catalog';
+import { categoryPath, fmtAr, fmtNum, stockOf, variantCost, type Category, type Product, type Purchase, type Variant, PURCHASE_STATUS } from '../lib/catalog';
 import { courierSplit, fmtPhone, orderLabel, ORDER_STATUS, PAY_METHODS, type Courier, type Customer, type Order, type Zone } from '../lib/orders';
 import { courierBalance, type CourierSettlement } from '../lib/money';
 import { purchaseQty, purchaseReceivedQty, purchaseTotal, purchaseTotalAr, purchasePaid, type Supplier } from '../lib/purchases';
@@ -394,8 +395,8 @@ function Purchases({ from, to }: { from: string; to: string }) {
     { key: 's', label: 'Statut', value: (p) => PURCHASE_STATUS[p.status].label },
     { key: 'q', label: 'Pièces', value: (p) => purchaseQty(p), num: true, total: true },
     { key: 'r', label: 'Reçues', value: (p) => purchaseReceivedQty(p), num: true, total: true },
-    { key: 't', label: 'Total (devise)', value: (p) => `${Math.round(purchaseTotal(p)).toLocaleString('fr-FR')} ${p.currency === 'RMB' ? '¥' : 'Ar'}` },
-    { key: 'a', label: 'Total en Ariary', value: (p) => purchaseTotalAr(p), money: true, total: true },
+    { key: 't', label: 'Total (devise)', value: (p) => p.currency === 'RMB' ? `${fmtNum(purchaseTotal(p), 2)} ¥` : fmtMoney(purchaseTotal(p)) },
+    { key: 'a', label: `Total en ${curSym()}`, value: (p) => purchaseTotalAr(p), money: true, total: true },
     { key: 'p', label: 'Reste à payer', value: (p) => Math.max(0, purchaseTotal(p) - purchasePaid(p)) * (p.currency === 'RMB' ? p.rate || 0 : 1), money: true, total: true },
   ];
   return (

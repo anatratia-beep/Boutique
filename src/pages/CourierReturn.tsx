@@ -4,6 +4,7 @@
 // Puis : prix des articles et frais de livraison séparés, et règlement des frais du livreur
 // (retenus sur l'argent versé, payés à part, ou plus tard sur son compte).
 import { linesPages } from '../lib/scope';
+import { curSym, moneyInputMode } from '../lib/currency';
 import { useMemo, useState } from 'react';
 import { useCan } from '../lib/auth';
 import { get, save, useTable } from '../lib/db';
@@ -12,7 +13,7 @@ import {
   choiceBlocking, choiceKept, cancelDeliveryToShop, defaultReturnDay, departureDays, returnAt, MAX_REPORTS, reportCount, choiceQty, courierSplit, fmtPhone, hasPendingChoice, orderLabel, recordReturn, remaining, PAY_METHODS,
   type Courier, type Order, type Zone,
 } from '../lib/orders';
-import { ACCOUNTS, ACCOUNT_IDS, courierBalance, payDeferredFees, settleCourier, type AccountId, type CourierSettlement } from '../lib/money';
+import { ACCOUNTS, accountIds, courierBalance, payDeferredFees, settleCourier, type AccountId, type CourierSettlement } from '../lib/money';
 import { Help, Badge, Choice, Button, Confirm, Empty, SelectField, TextField, fmtDateTime, toast, useKeep } from '../ui/kit';
 import { PeriodPicker, defaultPeriod, inPeriod, type Period } from '../ui/period';
 import { Icon } from '../ui/icons';
@@ -72,7 +73,7 @@ function PayOwedModal({ courier, amount, onClose }: { courier: Courier; amount: 
     <Confirm title={`Payer les frais de ${courier.name}`} confirmLabel="Enregistrer le paiement" onClose={onClose}
       onConfirm={async () => { const v = parseNum(val) || 0; if (v <= 0) throw new Error('Montant à saisir.'); await payDeferredFees(courier, v, acc); await save('couriers', { id: courier.id, feeClaimAt: null as unknown as undefined }); toast(`${fmtAr(v)} payés à ${courier.name}`); }}
       message={<div className="stack-s"><p>La boutique doit <strong>{fmtAr(amount)}</strong> de frais de livraison à {courier.name}.</p>
-        <div className="grid-2"><TextField label="Montant payé (Ar)" required value={val} onChange={setVal} inputMode="numeric" /><SelectField label="Payé depuis" value={acc} onChange={(v) => setAcc(v as AccountId)} options={ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))} /></div></div>} />
+        <div className="grid-2"><TextField label={`Montant payé (${curSym()})`} required value={val} onChange={setVal} inputMode={moneyInputMode()} /><SelectField label="Payé depuis" value={acc} onChange={(v) => setAcc(v as AccountId)} options={accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))} /></div></div>} />
   );
 }
 
@@ -204,7 +205,7 @@ function CourierSheet({ courier, canSettle, only }: { courier: Courier; canSettl
           </div>
           {!r.blocked && <div className="money-lines">
             <div><span>a. Articles (après le choix du client)</span><strong className="num">{fmtAr(r.a)}</strong></div>
-            <div><span>b. Frais de livraison</span>{r.open && r.d !== 'refused' ? <input className="cell-input num-input" inputMode="numeric" aria-label={`Frais ${r.o.number}`} value={fees[r.o.id] ?? String(r.fee)} onChange={(e) => setFees({ ...fees, [r.o.id]: e.target.value })} /> : <strong className="num">{fmtAr(r.fee)}</strong>}</div>
+            <div><span>b. Frais de livraison</span>{r.open && r.d !== 'refused' ? <input className="cell-input num-input" inputMode={moneyInputMode()} aria-label={`Frais ${r.o.number}`} value={fees[r.o.id] ?? String(r.fee)} onChange={(e) => setFees({ ...fees, [r.o.id]: e.target.value })} /> : <strong className="num">{fmtAr(r.fee)}</strong>}</div>
             {r.open && r.fee !== (r.o.deliveryFee || 0) && <div className="small muted"><span>prévu</span><span>{fmtAr(r.o.deliveryFee)}</span></div>}
             <div className="ml-total"><span>c. À payer par le client (a + b)</span><strong className="num">{fmtAr(r.c)}</strong></div>
             <div><span>d. Déjà payé à la boutique{r.paidHow ? ` (${r.paidHow})` : ''}</span><strong className="num">{r.prepaid ? '− ' + fmtAr(r.prepaid) : '—'}</strong></div>
@@ -233,13 +234,13 @@ function CourierSheet({ courier, canSettle, only }: { courier: Courier; canSettl
           </div>
           <SelectField label="g. Les frais du livreur sont payés…" required value={feeChoice} onChange={setFeeChoice} options={[
             { value: 'retenue', label: 'Gardés par le livreur sur l’argent versé' },
-            ...ACCOUNT_IDS.filter((x) => x !== 'bank').map((x) => ({ value: 'apart:' + x, label: `Payés à part — ${ACCOUNTS[x]}` })),
+            ...accountIds().filter((x) => x !== 'bank').map((x) => ({ value: 'apart:' + x, label: `Payés à part — ${ACCOUNTS[x]}` })),
             { value: 'plustard', label: 'Différés (à payer au plus vite, au plus tard ce soir)' },
           ]} />
           <div className="ml-expected"><span>Attendu du livreur maintenant</span><strong className="num">{fmtAr(expected)}</strong></div>
           <div className="grid-2">
-            <TextField label="f. Montant versé par le livreur (Ar)" required value={amount ?? String(expected)} onChange={setAmount} inputMode="numeric" />
-            <SelectField label="Reçu sur" value={account} onChange={(v) => setAccount(v as AccountId)} options={ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }))} />
+            <TextField label={`f. Montant versé par le livreur (${curSym()})`} required value={amount ?? String(expected)} onChange={setAmount} inputMode={moneyInputMode()} />
+            <SelectField label="Reçu sur" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))} />
           </div>
           <TextField label={gap ? 'Remarque (écart)' : 'Remarque (facultatif)'} required={gap !== 0} value={note} onChange={setNote} />
           <div className={`notice ${gap === 0 && after === 0 ? 'notice-ok' : gap !== 0 ? 'notice-danger' : ''}`}><Icon name={gap === 0 ? 'check' : 'alert'} />

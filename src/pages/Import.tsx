@@ -1,5 +1,6 @@
 // Import Excel : modèles à télécharger, reprise du stock, fichiers de commande Chine, fournisseurs, catégories.
 import { useMemo, useState } from 'react';
+import { curSym } from '../lib/currency';
 import { audit, currentUser, useCan } from '../lib/auth';
 import { all, get, newId, save, useTable } from '../lib/db';
 import {
@@ -95,7 +96,7 @@ const TEMPLATES = [
       { name: 'Articles', columns: [
         { header: 'Catégorie', width: 20, input: true }, { header: 'Code article', width: 13, input: true }, { header: "Nom de l'article", width: 34, input: true },
         { header: 'Couleur', width: 12, input: true }, { header: 'Taille', width: 8, input: true }, { header: 'Code variante', width: 18 },
-        { header: 'Stock', width: 9, input: true }, { header: 'Prix de revient (Ar)', width: 15, input: true }, { header: 'PV détail (Ar)', width: 13, input: true }, { header: 'PV gros (Ar)', width: 13, input: true },
+        { header: 'Stock', width: 9, input: true }, { header: `Prix de revient (${curSym()})`, width: 15, input: true }, { header: `PV détail (${curSym()})`, width: 13, input: true }, { header: `PV gros (${curSym()})`, width: 13, input: true },
       ], rows: [
         ['Boxer homme', 'BXH8', 'Boxer homme coton', 'Bleu', 'L', 'BXH8 Bleu L', 30, 5740, 12000, 10000],
         ['Boxer homme', 'BXH8', 'Boxer homme coton', 'Bleu', 'XL', 'BXH8 Bleu XL', 25, 5740, 12000, 10000],
@@ -105,7 +106,7 @@ const TEMPLATES = [
         'Une ligne = une variante (une couleur et une taille d’un article).',
         'Les lignes qui ont le même « Code article » forment un seul article avec plusieurs variantes.',
         'Code variante : facultatif. S’il est vide, il est fabriqué avec Code article + Couleur + Taille.',
-        'Stock : la quantité que vous avez aujourd’hui. Prix en Ariary, sans espace ni « Ar ».',
+        `Stock : la quantité que vous avez aujourd’hui. Prix en chiffres, sans espace ni « ${curSym()} ».`,
         'Couleur et Taille : laissez vide si l’article n’a qu’une version.',
         'Les 2 lignes d’exemple peuvent être effacées. Ne changez pas les titres des colonnes.',
         'Pour ajouter les photos : insérez l’image dans la ligne de l’article (n’importe quelle colonne), elle sera reprise.',
@@ -631,7 +632,7 @@ function OrderImport({ sheets, fileName, blocked, onDone }: { sheets: Sheet[]; f
         <TextField label="Nom des articles" value={family} onChange={setFamily} hint={`Les articles s’appelleront « ${family} ${refs[0]} », etc.`} />
         <SelectField label="Catégorie" value={catId} onChange={setCatId} options={[...categoryOptions(categories), { value: '__new', label: '+ Nouvelle catégorie…' }]} />
         {catId === '__new' && <TextField label="Nouvelle catégorie" value={newCat} onChange={setNewCat} />}
-        <TextField label="Taux : 1 ¥ = … Ar" required value={rate} onChange={setRate} inputMode="decimal" hint={detectedRate ? `Trouvé dans le fichier : ${detectedRate}` : 'Le taux utilisé pour cette commande.'} />
+        <TextField label={`Taux : 1 ¥ = … ${curSym()}`} required value={rate} onChange={setRate} inputMode="decimal" hint={detectedRate ? `Trouvé dans le fichier : ${detectedRate}` : 'Le taux utilisé pour cette commande.'} />
         <TextField label="Date de commande" type="date" value={date} onChange={setDate} />
         <SelectField label="Fournisseur" value={supplierId} onChange={setSupplierId} options={[{ value: '', label: 'Non indiqué' }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]} />
       </div>

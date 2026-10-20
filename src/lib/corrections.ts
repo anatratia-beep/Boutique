@@ -5,6 +5,7 @@
 // l'opération, puis on ajoute le mouvement inverse exact. Le stock revient donc exactement à ce qu'il était, quel que
 // soit le chemin suivi (vente sur place, livraison, retour, choix gardés, échange…). Tout reste dans l'historique.
 import { all, bizNow, get, newId, save } from './db';
+import { fmtMoney } from './currency';
 import { audit, currentUser } from './auth';
 import { addMoves, type StockMove } from './catalog';
 import { assertOpenAt } from './closed';
@@ -55,9 +56,9 @@ export async function voidOrder(o: Order, reason: string, refund?: { amount: num
   await save('orders', {
     id: o.id, status: 'cancelled', statusDates: { ...(o.statusDates || {}), cancelled: at }, payments: [...(o.payments || []), ...pays],
     notes: [o.notes, `Annulée : ${reason}`].filter(Boolean).join('\n'),
-    events: [...(o.events || []), { at, text: `Annulée (${reason}) : ${pcs} pièce(s) remises en stock${pays.length ? `, ${refund!.amount.toLocaleString('fr-FR')} Ar rendus` : ''}`, user: u?.fullName }],
+    events: [...(o.events || []), { at, text: `Annulée (${reason}) : ${pcs} pièce(s) remises en stock${pays.length ? `, ${fmtMoney(refund!.amount)} rendus` : ''}`, user: u?.fullName }],
   });
-  await audit('Vente annulée', `${o.number} — ${reason} : ${pcs} pièce(s) remises en stock${pays.length ? `, ${refund!.amount.toLocaleString('fr-FR')} Ar rendus au client` : ''}`, 'orders', o.id);
+  await audit('Vente annulée', `${o.number} — ${reason} : ${pcs} pièce(s) remises en stock${pays.length ? `, ${fmtMoney(refund!.amount)} rendus au client` : ''}`, 'orders', o.id);
 }
 export const refundSuggested = (o: Order) => Math.max(0, isWalkIn(o) ? shopPaid(o) : paid(o));
 
@@ -87,7 +88,7 @@ export async function correctWalkInSale(o: Order, lines: OrderLine[], discount: 
     id: o.id, lines: fixed, adjusts: undefined, discount, payments: [...(o.payments || []), ...pays],
     events: [...(o.events || []), { at, text: `Vente corrigée (${reason}) : ${before} → ${after}${o.discount !== discount ? ` ; remise ${o.discount} → ${discount}` : ''}`, user: u?.fullName }],
   });
-  await audit('Vente corrigée', `${o.number} — ${reason} : ${before} → ${after}${pays.length ? ` ; ${settle!.amount > 0 ? 'payé en plus' : 'rendu'} ${Math.abs(settle!.amount).toLocaleString('fr-FR')} Ar` : ''}`, 'orders', o.id);
+  await audit('Vente corrigée', `${o.number} — ${reason} : ${before} → ${after}${pays.length ? ` ; ${settle!.amount > 0 ? 'payé en plus' : 'rendu'} ${fmtMoney(Math.abs(settle!.amount))}` : ''}`, 'orders', o.id);
 }
 
 /** Annule une réception (erreur de saisie) : stock retiré exactement, quantités reçues des achats remises. */

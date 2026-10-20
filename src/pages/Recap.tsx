@@ -1,13 +1,14 @@
 // Récapitulatifs : journée et semaine (lundi → samedi) — ventes sur place, livraisons, comptes livreurs,
 // paiements reçus, dépenses et autres mouvements, à envoyer au responsable.
 import { useMemo, useState } from 'react';
+import { nonCashTitle } from '../lib/paymethods';
 import { useCan } from '../lib/auth';
 import { useTable } from '../lib/db';
 import { fmtAr, fmtNum, variantLabel, type Product, type Variant } from '../lib/catalog';
 import { salesLedger } from '../lib/analytics';
 import { useCompany } from '../lib/settings';
 import { fmtPhone, normPhone, orderLabel, ORDER_STATUS, PAY_METHODS, keptTotal, type Order, type Zone } from '../lib/orders';
-import { ACCOUNTS, MOVE_TYPES, addDays, mondayOf, report, today, type AccountId, type Report } from '../lib/money';
+import { ACCOUNTS, MOVE_TYPES, addDays, mondayOf, report, today, type AccountId, type Report, accountIds, allAccountIds } from '../lib/money';
 import { dayText, daySections, longDate, sectionsDoc, totals, weekDays, weekSections, weekText, type Section } from '../lib/recap';
 import { get } from '../lib/db';
 import { daySynthesis } from '../lib/synthesis';
@@ -58,7 +59,7 @@ export function RecapPage() {
         <Stat label={`Ventes sur place (${t.walkInCount})`} value={t.walkIn} />
         <Stat label={`Livraisons (${t.delivCount})`} value={t.deliv} />
         <Stat label="Total des ventes" value={r.netSales} strong />
-        <Stat label="Mobile Money reçu" value={t.mmIn} />
+        <Stat label={`${nonCashTitle()} reçu`} value={t.mmIn} />
         <Stat label="Espèces reçues en boutique" value={t.cashIn} />
         <Stat label="Dépenses" value={r.expenses} neg />
         <Stat label={mode === 'week' ? 'Total à verser par les livreurs' : 'À verser par les livreurs'} value={r.courierDue} strong />
@@ -187,18 +188,19 @@ function WeekTables({ days, r }: { days: ReturnType<typeof weekDays>; r: Report 
 }
 
 function MoneyCard({ r }: { r: Report }) {
-  const accounts: AccountId[] = ['cash', 'mvola', 'orange', 'airtel', 'bank'];
+  const accounts: AccountId[] = allAccountIds();
+  const shown = (a: AccountId, ...vals: (number | undefined)[]) => (a !== 'bank' && accountIds().includes(a)) || vals.some((v) => v);
   return (
     <div className="grid-2" style={{ alignItems: 'start' }}>
       <div className="card stack-s">
         <h2>Paiements reçus</h2>
         <table className="kv-table"><tbody>
-          {accounts.filter((a) => a !== 'bank' || r.receipts.bank || r.fromCouriers.bank).map((a) => <tr key={a}><td>{ACCOUNTS[a]}{r.fromCouriers[a] ? <span className="muted small"> (dont versements livreurs {fmtAr(r.fromCouriers[a])})</span> : ''}</td><td>{fmtAr(r.receipts[a] + r.fromCouriers[a])}</td></tr>)}
-          <tr className="total"><td>Total reçu</td><td>{fmtAr(accounts.reduce((s, a) => s + r.receipts[a] + r.fromCouriers[a], 0))}</td></tr>
+          {accounts.filter((a) => shown(a, r.receipts[a], r.fromCouriers[a])).map((a) => <tr key={a}><td>{ACCOUNTS[a]}{r.fromCouriers[a] ? <span className="muted small"> (dont versements livreurs {fmtAr(r.fromCouriers[a])})</span> : ''}</td><td>{fmtAr(r.receipts[a] + r.fromCouriers[a])}</td></tr>)}
+          <tr className="total"><td>Total reçu</td><td>{fmtAr(accounts.reduce((s, a) => s + (r.receipts[a] || 0) + (r.fromCouriers[a] || 0), 0))}</td></tr>
         </tbody></table>
         <h3 style={{ marginTop: 10 }}>Soldes en fin de période</h3>
         <table className="kv-table"><tbody>
-          {accounts.filter((a) => a !== 'bank' || r.balancesEnd.bank).map((a) => <tr key={a}><td>{ACCOUNTS[a]}</td><td className={r.balancesEnd[a] < 0 ? 'neg' : ''}>{fmtAr(r.balancesEnd[a])}</td></tr>)}
+          {accounts.filter((a) => shown(a, r.balancesEnd[a])).map((a) => <tr key={a}><td>{ACCOUNTS[a]}</td><td className={r.balancesEnd[a] < 0 ? 'neg' : ''}>{fmtAr(r.balancesEnd[a] || 0)}</td></tr>)}
         </tbody></table>
       </div>
       <div className="card stack-s">

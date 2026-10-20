@@ -2,6 +2,8 @@
 // Saisie séparée de la commande ; liste groupée (en retard / aujourd'hui / plus tard) avec tris ; relances ;
 // transformation en commande seulement quand les critères essentiels sont remplis.
 import { useMemo, useState } from 'react';
+import { firstNonCash } from '../lib/paymethods';
+import { fmtMoney, curSym, moneyInputMode } from '../lib/currency';
 import { useCan, useMe } from '../lib/auth';
 import { get, newId, useTable } from '../lib/db';
 import { fmtAr, matchQuery, parseNum, useCatalog, type Category, parseAr } from '../lib/catalog';
@@ -298,18 +300,18 @@ function RelanceModal({ p, onClose }: { p: Prospect; onClose: () => void }) {
 
 function PaidModal({ p, onClose }: { p: Prospect; onClose: () => void }) {
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PayMethod>('mvola');
+  const [method, setMethod] = useState<PayMethod>(firstNonCash());
   const [ref, setRef] = useState('');
   return (
     <Modal title="Paiement reçu" onClose={onClose}
       footer={<><Button variant="ghost" onClick={onClose}>Annuler</Button><Button disabled={!parseAr(amount)} onClick={async () => {
-        await followUp(p, `Paiement reçu : ${parseAr(amount)} Ar (${PAY_METHODS[method]})`, p.followAt, { waitDone: true, paid: { amount: parseAr(amount)!, method, ref: ref.trim() || undefined } });
+        await followUp(p, `Paiement reçu : ${fmtMoney(parseAr(amount))} (${PAY_METHODS[method]})`, p.followAt, { waitDone: true, paid: { amount: parseAr(amount)!, method, ref: ref.trim() || undefined } });
         toast('Paiement noté : il sera repris dans la commande'); onClose();
       }}>Enregistrer</Button></>}>
       <div className="stack">
         <p className="small muted">Le paiement est enregistré en caisse au moment où la commande est créée (rien n’est compté deux fois).</p>
         <div className="grid-2">
-          <TextField label="Montant (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" autoFocus />
+          <TextField label={`Montant (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} autoFocus />
           <SelectField label="Moyen" value={method} onChange={(v) => setMethod(v as PayMethod)} options={Object.entries(PAY_METHODS).map(([value, label]) => ({ value, label }))} />
           {method !== 'cash' && <TextField label="Référence de la transaction" value={ref} onChange={setRef} />}
         </div>

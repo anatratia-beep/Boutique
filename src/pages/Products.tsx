@@ -1,5 +1,6 @@
 // Articles : liste, fiche article, variantes (couleur/taille), catégories, ajustements de stock.
 import { useMyScope } from '../lib/scope';
+import { curSym, moneyInputMode } from '../lib/currency';
 import { SortSelect, compareBy, useSortPref } from '../ui/stockSort';
 import { soldByVariant } from '../lib/stockRank';
 import { ScopeBar } from '../ui/scope';
@@ -427,8 +428,8 @@ export function ProductForm({ product, onClose, onSaved }: { product?: Product; 
           <TextField label="Nom" required value={name} onChange={setName} placeholder="Ex. Boxer homme coton imprimé" />
           <SelectField label="Catégorie" value={categoryId} onChange={setCategoryId} options={[...categoryOptions(categories), { value: '__new', label: '+ Nouvelle catégorie…' }]} />
           {categoryId === '__new' ? <TextField label="Nom de la nouvelle catégorie" required value={newCat} onChange={setNewCat} /> : <TextField label="Alerte stock bas à partir de" value={alertQty} onChange={setAlertQty} inputMode="numeric" />}
-          <TextField label="Prix de vente détail (Ar)" value={priceRetail} onChange={setPriceRetail} inputMode="numeric" />
-          <TextField label="Prix de gros (Ar)" value={priceWholesale} onChange={setPriceWholesale} inputMode="numeric" hint="À partir de 3 pièces (réglable)." />
+          <TextField label={`Prix de vente détail (${curSym()})`} value={priceRetail} onChange={setPriceRetail} inputMode={moneyInputMode()} />
+          <TextField label={`Prix de gros (${curSym()})`} value={priceWholesale} onChange={setPriceWholesale} inputMode={moneyInputMode()} hint="À partir de 3 pièces (réglable)." />
         </div>
         {!product && (
           <div className="card stack" style={{ background: 'var(--surface-2)' }}>
@@ -510,10 +511,10 @@ function VariantForm({ product, variant, onClose }: { product: Product; variant:
         </div>)}
         <TextField label={attr ? 'Code (code-barres)' : 'Code de la variante'} value={sku} onChange={setSku} />
         {!attr && <div className="grid-2">
-          <TextField label="Prix détail propre (facultatif)" value={price} onChange={setPrice} inputMode="numeric" hint={`Sinon : ${fmtAr(product.priceRetail)}`} />
-          <TextField label="Prix de gros propre (facultatif)" value={wholesale} onChange={setWholesale} inputMode="numeric" hint={`Sinon : ${fmtAr(product.priceWholesale)}`} />
+          <TextField label="Prix détail propre (facultatif)" value={price} onChange={setPrice} inputMode={moneyInputMode()} hint={`Sinon : ${fmtAr(product.priceRetail)}`} />
+          <TextField label="Prix de gros propre (facultatif)" value={wholesale} onChange={setWholesale} inputMode={moneyInputMode()} hint={`Sinon : ${fmtAr(product.priceWholesale)}`} />
         </div>}
-        {can('costs.view') && <TextField label="Coût de revient moyen (Ar)" value={cost} onChange={setCost} inputMode="decimal" hint="Calculé automatiquement à chaque réception. Ne le modifiez que pour corriger." />}
+        {can('costs.view') && <TextField label={`Coût de revient moyen (${curSym()})`} value={cost} onChange={setCost} inputMode="decimal" hint="Calculé automatiquement à chaque réception. Ne le modifiez que pour corriger." />}
       </div>
       {del && <Confirm title="Supprimer la variante" danger confirmLabel="Supprimer" message={<p>La variante {variantLabel(variant)} sera supprimée. Elle n’a ni stock, ni vente, ni achat.</p>}
         onClose={() => setDel(false)} onConfirm={async () => { await remove('variants', variant.id); onClose(); }} />}
@@ -566,7 +567,7 @@ export function AdjustModal({ product, variants, onClose }: { product: Product; 
         </div>
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Variante</th><th className="t-num">Actuel</th><th>{mode === 'set' ? 'Quantité réelle' : 'Ajouter / retirer'}</th><th className="t-num">Écart</th>{initial && can('costs.view') && <th>Coût unitaire (Ar)</th>}</tr></thead>
+            <thead><tr><th>Variante</th><th className="t-num">Actuel</th><th>{mode === 'set' ? 'Quantité réelle' : 'Ajouter / retirer'}</th><th className="t-num">Écart</th>{initial && can('costs.view') && <th>Coût unitaire ({curSym()})</th>}</tr></thead>
             <tbody>
               {variants.map((v) => {
                 const c = changes.find((x) => x.v.id === v.id);

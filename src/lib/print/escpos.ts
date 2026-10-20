@@ -15,13 +15,14 @@ const CP858: Record<string, number> = {
   á: 0xa0, í: 0xa1, ó: 0xa2, ú: 0xa3, ñ: 0xa4, Ñ: 0xa5, '«': 0xae, '»': 0xaf, Á: 0xb5, Â: 0xb6, À: 0xb7, Ê: 0xd2, Ë: 0xd3, È: 0xd4, '€': 0xd5,
   Í: 0xd6, Î: 0xd7, Ï: 0xd8, Ó: 0xe0, Ô: 0xe2, Ò: 0xe3, Ú: 0xe9, Û: 0xea, Ù: 0xeb, '°': 0xf8, '·': 0xfa,
 };
-const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[«»]/g, '"').replace(/€/g, 'EUR').replace(/·/g, '.').replace(/°/g, 'o');
+const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[«»]/g, '"').replace(/€/g, 'EUR').replace(/·/g, '.').replace(/°/g, 'o').replace(/[\u00a0\u202f]/g, ' ').replace(/₦/g, 'N').replace(/₵/g, 'C').replace(/₹/g, 'Rs').replace(/¥/g, 'Y');
 
 function encodeText(s: string, cs: Charset): number[] {
   const out: number[] = [];
   for (const ch of cs === 'ascii' ? stripAccents(s) : s) {
     const c = ch.codePointAt(0)!;
     if (c < 0x80) out.push(c);
+    else if (c === 0xa0 || c === 0x202f) out.push(0x20); // espaces insécables des montants (« 20 000 »)
     else if (cs === 'cp858' && CP858[ch] != null) out.push(CP858[ch]);
     else if (cs === 'wpc1252' && c <= 0xff) out.push(c);
     else if (cs === 'wpc1252' && ch === '€') out.push(0x80);

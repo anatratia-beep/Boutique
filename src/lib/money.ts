@@ -1,6 +1,8 @@
 // Trésorerie : comptes (caisse, mobile money, banque), mouvements, dépenses et revenus, règlements des
 // livreurs, chiffres d'une journée et clôture (« Z de caisse »).
 import { all, applyRemote, bizNow, dataVersion, get, newId, nowIso, remove, save, workDate, type BaseRecord } from './db';
+import { liveLabels, methodIds, methodLabel, payMethods } from './paymethods';
+import { fmtMoney, roundMoney } from './currency';
 import { audit, currentUser, type User } from './auth';
 import { assertOpenAt } from './closed';
 import { variantCost, type Variant } from './catalog';
@@ -8,9 +10,13 @@ import { adjustsKeptTotal, adjustsTotal } from './lots';
 import { courierSplit, isPickupZone, isWalkIn, itemsTotal, keptTotal, recordReturn, remaining, returnAt as returnAtImport, sellingLines, type Courier, type Order, type PayMethod } from './orders';
 
 // ---------- Comptes ----------
+/** Un compte par moyen de paiement (même identifiant), plus « Banque ». */
 export type AccountId = PayMethod | 'bank';
-export const ACCOUNTS: Record<AccountId, string> = { cash: 'Caisse espèces', mvola: 'MVola', orange: 'Orange Money', airtel: 'Airtel Money', bank: 'Banque' };
-export const ACCOUNT_IDS = Object.keys(ACCOUNTS) as AccountId[];
+export const ACCOUNTS: Record<AccountId, string> = liveLabels(() => ({ bank: 'Banque' }), (id) => (id === 'cash' ? 'Caisse espèces' : methodLabel(id)));
+/** Comptes proposés dans les listes (moyens actifs + banque). */
+export const accountIds = (): AccountId[] => [...methodIds(), 'bank'];
+/** Tous les comptes, y compris ceux d'un moyen désactivé (pour les soldes et les totaux). */
+export const allAccountIds = (): AccountId[] => [...payMethods().map((m) => m.id), 'bank'];
 
 export type MoveType = 'opening' | 'expense' | 'income' | 'transfer' | 'owner_in' | 'owner_out' | 'courier_settlement' | 'purchase' | 'gap';
 export const MOVE_TYPES: Record<MoveType, string> = {
@@ -102,7 +108,8 @@ export async function seedFinance() {
 }
 
 // ---------- Soldes ----------
-const ACCOUNT_OF_METHOD: Record<PayMethod, AccountId> = { cash: 'cash', mvola: 'mvola', orange: 'orange', airtel: 'airtel' };
+/** Le compte d'un moyen de paiement porte le même identifiant. */
+const ACCOUNT_OF_METHOD = new Proxy({} as Record<PayMethod, AccountId>, { get: (_, k) => k as AccountId });
 /** Argent reçu (ou rendu) directement par la boutique, compte par compte. */
 function shopPayments(until?: string) {
   const out: { at: string; account: AccountId; amount: number; order: Order }[] = [];
@@ -113,8 +120,8 @@ function shopPayments(until?: string) {
   return out;
 }
 export function balances(until?: string): Record<AccountId, number> {
-  const b = Object.fromEntries(ACCOUNT_IDS.map((a) => [a, 0])) as Record<AccountId, number>;
-  for (const p of shopPayments(until)) b[p.account] += p.amount;
+  const b = Object.fromEntries(allAccountIds().map((a) => [a, 0])) as Record<AccountId, number>;
+  for (const p of shopPayments(until)) b[p.account] = (b[p.account] || 0) + p.amount;
   for (const m of all<CashMove>('cashMoves')) if (!until || m.at <= until) b[m.account] = (b[m.account] || 0) + m.amount;
   return b;
 }
@@ -143,7 +150,7 @@ const who = () => currentUser()?.fullName;
 export async function addMove(m: Omit<CashMove, 'id' | 'createdAt' | 'updatedAt' | 'userName'>) {
   if (m.type === 'expense' || m.type === 'income') assertOpenAt(m.at, m.type === 'expense' ? 'Dépense' : 'Revenu');
   const [r] = await save('cashMoves', { ...m, userName: who() });
-  await audit(MOVE_TYPES[m.type], `${ACCOUNTS[m.account]} : ${m.amount > 0 ? '+' : ''}${m.amount} Ar${m.label ? ' — ' + m.label : ''}`, 'cashMoves', r.id);
+  await audit(MOVE_TYPES[m.type], `${ACCOUNTS[m.account]} : ${m.amount > 0 ? '+' : ''}${fmtMoney(m.amount)}${m.label ? ' — ' + m.label : ''}`, 'cashMoves', r.id);
   return r as CashMove;
 }
 export async function addTransfer(from: AccountId, to: AccountId, amount: number, at: string, note?: string, fee = 0) {
@@ -154,7 +161,7 @@ export async function addTransfer(from: AccountId, to: AccountId, amount: number
     { at, account: to, amount, type: 'transfer', transferId, label, note, userName: who() },
     ...(fee ? [{ at, account: from, amount: -fee, type: 'expense', categoryId: 'fc-frais-mm', label: `Frais de retrait ${ACCOUNTS[from]}`, transferId, userName: who() }] : []),
   ]);
-  await audit('Virement entre comptes', `${label} : ${amount} Ar${fee ? ` (frais ${fee} Ar)` : ''}`, 'cashMoves', transferId);
+  await audit('Virement entre comptes', `${label} : ${fmtMoney(amount)}${fee ? ` (frais ${fmtMoney(fee)})` : ''}`, 'cashMoves', transferId);
 }
 export async function deleteMove(m: CashMove) {
   if (m.refType === 'purchases' || (m.type === 'purchase' && m.refId)) throw new Error('Ce mouvement est un paiement de commande Chine : supprimez-le depuis la commande (Achats), pour que la commande et la trésorerie restent d’accord.');
@@ -163,7 +170,7 @@ export async function deleteMove(m: CashMove) {
   if (m.type === 'expense' || m.type === 'income') assertOpenAt(m.at, 'Suppression');
   const linked = m.transferId ? all<CashMove>('cashMoves').filter((x) => x.transferId === m.transferId) : [m];
   for (const x of linked) await remove('cashMoves', x.id);
-  await audit('Opération supprimée', `${MOVE_TYPES[m.type]} ${m.amount} Ar (${ACCOUNTS[m.account]})${m.label ? ' — ' + m.label : ''}`, 'cashMoves', m.id);
+  await audit('Opération supprimée', `${MOVE_TYPES[m.type]} ${fmtMoney(m.amount)} (${ACCOUNTS[m.account]})${m.label ? ' — ' + m.label : ''}`, 'cashMoves', m.id);
 }
 
 // ---------- Opérations récurrentes (loyer, salaires…) ----------
@@ -294,7 +301,7 @@ export async function settleCourier(c: Courier, orderIds: string[], amount: numb
   if (amount) await save('cashMoves', { at, account, amount, type: 'courier_settlement', label: `${amount > 0 ? 'Versement de' : 'Frais versés à'} ${c.name}`, note, refType: 'courierSettlements', refId: s.id, userName: who() });
   // Les commandes réglées ne peuvent plus changer de livreur.
   if (orderIds.length) await save('orders', orderIds.map((id) => ({ id, courierSettledAt: at })));
-  await audit('Versement livreur', `${c.name} : ${amount >= 0 ? 'remis ' + amount : 'versé ' + -amount} Ar (${ACCOUNTS[account]}) — attendu ${expected} Ar, ${orderIds.length} livraison(s) cochée(s)`, 'courierSettlements', s.id);
+  await audit('Versement livreur', `${c.name} : ${amount >= 0 ? 'remis ' + fmtMoney(amount) : 'versé ' + fmtMoney(-amount)} (${ACCOUNTS[account]}) — attendu ${fmtMoney(expected)}, ${orderIds.length} livraison(s) cochée(s)`, 'courierSettlements', s.id);
   return s as CourierSettlement;
 }
 
@@ -377,8 +384,8 @@ export function courierRemovalBlockers(courierId: string): string[] {
   const b = courierBalance(courierId);
   const out: string[] = [];
   if (b.outOrders) out.push(`${b.outOrders} colis encore en livraison chez lui : faites d’abord le retour du livreur.`);
-  if (Math.round(b.due) > 0) out.push(`Il doit encore ${Math.round(b.due).toLocaleString('fr-FR')} Ar à la boutique : faites d’abord son règlement.`);
-  if (Math.round(b.due) < 0) out.push(`La boutique lui doit encore ${Math.round(-b.due).toLocaleString('fr-FR')} Ar (frais) : payez-le d’abord.`);
+  if (roundMoney(b.due) > 0) out.push(`Il doit encore ${fmtMoney(b.due)} à la boutique : faites d’abord son règlement.`);
+  if (roundMoney(b.due) < 0) out.push(`La boutique lui doit encore ${fmtMoney(-b.due)} (frais) : payez-le d’abord.`);
   const waiting = all<Order>('orders').filter((o) => o.courierId === courierId && (o.status === 'confirmed' || o.status === 'ready' || o.status === 'new')).length;
   if (waiting) out.push(`${waiting} commande(s) en attente lui sont déjà attribuées : changez de livreur d’abord.`);
   return out;
@@ -427,7 +434,7 @@ const costOf = (variantId: string) => { const v = get<Variant>('variants', varia
  * Ce qui revient ensuite est un « retour » le jour du retour ; les choix gardés sont vendus le jour du retour.
  */
 export function report(from: string, to: string): Report {
-  const z = () => Object.fromEntries(ACCOUNT_IDS.map((a) => [a, 0])) as Record<AccountId, number>;
+  const z = () => Object.fromEntries(allAccountIds().map((a) => [a, 0])) as Record<AccountId, number>;
   const inR = (iso?: string) => { if (!iso) return false; const d = dayOf(iso); return d >= from && d <= to; };
   const s: Report = {
     from, to, sales: { count: 0, amount: 0, shopCount: 0, shopAmount: 0, onlineCount: 0, onlineAmount: 0, internalCount: 0, internalAmount: 0 }, returns: { count: 0, amount: 0 },
@@ -475,7 +482,7 @@ export function report(from: string, to: string): Report {
 
   for (const o of all<Order>('orders')) for (const p of o.payments || []) {
     if (!inR(p.at)) continue;
-    if (p.receivedBy === 'shop') s.receipts[ACCOUNT_OF_METHOD[p.method]] += p.amount;
+    if (p.receivedBy === 'shop') s.receipts[ACCOUNT_OF_METHOD[p.method]] = (s.receipts[ACCOUNT_OF_METHOD[p.method]] || 0) + p.amount;
     else s.collectedByCouriers += p.amount;
   }
   const cats = new Map(all<FinanceCategory>('financeCategories').map((c) => [c.id, c.name]));

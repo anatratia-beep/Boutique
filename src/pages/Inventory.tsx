@@ -2,6 +2,7 @@
 // valider ; historique des inventaires par page et période, export Excel réimportable, annulation ; détail des
 // mouvements d'un article pour comprendre un écart entre stock réel et théorique.
 import { useMemo, useRef, useState } from 'react';
+import { curSym, roundMoney } from '../lib/currency';
 import { useCan } from '../lib/auth';
 import { get, useMeta, useTable } from '../lib/db';
 import { fmtAr, fmtNum, parseNum, photoOf, productText, searchItems, stockOf, useCatalog, type Category, type Product, type Variant } from '../lib/catalog';
@@ -156,14 +157,14 @@ function History() {
       { key: 'n', label: 'N°', value: (i: Inventory) => i.number, width: 12 }, { key: 'd', label: 'Date et heure', value: (i: Inventory) => new Date(i.at).toLocaleString('fr-FR'), width: 20 },
       { key: 'b', label: 'Par', value: (i: Inventory) => i.byName ?? '', width: 18 }, { key: 'p', label: 'Pages', value: pagesOf, width: 30 },
       { key: 'l', label: 'Lignes comptées', value: (i: Inventory) => sum(i).n, width: 12 }, { key: 'g', label: 'Écarts', value: (i: Inventory) => sum(i).g, width: 9 },
-      { key: 'pc', label: 'Pièces', value: (i: Inventory) => sum(i).pcs, width: 9 }, ...(showCost ? [{ key: 'v', label: 'Valeur (Ar)', value: (i: Inventory) => Math.round(sum(i).val), money: true, width: 14 }] : []),
+      { key: 'pc', label: 'Pièces', value: (i: Inventory) => sum(i).pcs, width: 9 }, ...(showCost ? [{ key: 'v', label: `Valeur (${curSym()})`, value: (i: Inventory) => roundMoney(sum(i).val), money: true, width: 14 }] : []),
       { key: 's', label: 'État', value: (i: Inventory) => (i.status === 'cancelled' ? `Annulé (${i.cancelReason ?? ''})` : 'Validé'), width: 22 }, { key: 'no', label: 'Note', value: (i: Inventory) => i.note ?? '', width: 26 },
     ], rows: list, notes: [title] },
     { name: 'Détail des lignes', cols: [
       { key: 'n', label: 'Inventaire', value: (r: any) => r.inv, width: 12 }, { key: 'd', label: 'Date', value: (r: any) => r.date, width: 18 }, { key: 'pg', label: 'Page', value: (r: any) => pageName(r.pageId), width: 18 },
       { key: 'sku', label: 'Code variante', value: (r: any) => r.sku, width: 22 }, { key: 'a', label: 'Article', value: (r: any) => r.name, width: 30 },
       { key: 't', label: 'Théorique', value: (r: any) => r.theo, width: 10 }, { key: 'c', label: 'Stock', value: (r: any) => r.counted, width: 9 }, { key: 'e', label: 'Écart', value: (r: any) => r.delta, width: 9 },
-      ...(showCost ? [{ key: 'v', label: 'Valeur écart (Ar)', value: (r: any) => Math.round(r.delta * r.unitCost), money: true, width: 14 }] : []),
+      ...(showCost ? [{ key: 'v', label: `Valeur écart (${curSym()})`, value: (r: any) => roundMoney(r.delta * r.unitCost), money: true, width: 14 }] : []),
     ], rows: list.flatMap((i) => linesOf(i).map((l) => ({ ...l, inv: i.number, date: new Date(i.at).toLocaleString('fr-FR') }))) },
   ]);
   const exportPdf = () => printA4(title, `Du ${period.from ? new Date(`${period.from}T12:00:00`).toLocaleDateString('fr-FR') : 'début'} au ${period.to ? new Date(`${period.to}T12:00:00`).toLocaleDateString('fr-FR') : 'aujourd’hui'}`,

@@ -1,5 +1,7 @@
 // Commandes clients, livraisons, livreurs, zones : règles de calcul et actions.
 import { all, allWithDeleted, applyRemote, bizNow, get, newId, remove, save, type BaseRecord } from './db';
+import { liveLabels } from './paymethods';
+import { fmtMoney, roundMoney, moneyDecimals } from './currency';
 import { audit, currentUser } from './auth';
 import { addMoves, nextNumber, stockOf, variantLabel, type Product, type StockMove, type Variant } from './catalog';
 import { DEFAULT_COMPANY, type Company } from './settings';
@@ -13,8 +15,10 @@ export interface Courier extends BaseRecord { name: string; phone?: string; zone
 export interface Customer extends BaseRecord { phone?: string; phone2?: string; name?: string; facebook?: string; place?: string; zoneId?: string; notes?: string }
 
 export type OrderStatus = 'new' | 'confirmed' | 'ready' | 'out' | 'delivered' | 'partial' | 'refused' | 'cancelled';
-export type PayMethod = 'cash' | 'mvola' | 'orange' | 'airtel';
-export const PAY_METHODS: Record<PayMethod, string> = { cash: 'Espèces', mvola: 'MVola', orange: 'Orange Money', airtel: 'Airtel Money' };
+/** Identifiant d'un moyen de paiement : 'cash', 'mvola'… ou un moyen ajouté par la boutique (voir paymethods.ts). */
+export type PayMethod = string;
+/** Noms des moyens de paiement actifs (suit la liste de la boutique). */
+export const PAY_METHODS: Record<PayMethod, string> = liveLabels();
 
 export interface OrderLine {
   id: string;
@@ -130,8 +134,9 @@ export function internalPrice(variantId: string, step = 1) {
   const v = get<Variant>('variants', variantId);
   const cost = v?.costAvg ?? 0;
   if (cost <= 0) return 0;
-  const st = step > 0 ? step : 1;
-  return Math.ceil(Math.round(cost * 1000) / 1000 / st) * st;
+  // Palier 1 = l'unité de la devise : 1 Ar, ou 0,01 € pour une devise à centimes.
+  const st = step > 1 ? step : 10 ** -moneyDecimals();
+  return roundMoney(Math.ceil(Math.round(cost * 1000) / 1000 / st - 1e-9) * st);
 }
 
 // ---------- Téléphones ----------
@@ -310,7 +315,7 @@ export function withLineWholesale(lines: OrderLine[]) {
 /** Remise saisie en Ar ou en % du montant des articles → montant en Ar (arrondi). */
 export function discountAr(value: string | number | undefined, unit: 'ar' | 'pct', base: number) {
   const n = typeof value === 'number' ? value : Number(String(value ?? '').replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-  return unit === 'pct' ? Math.round((base * Math.min(100, n)) / 100) : Math.round(n);
+  return unit === 'pct' ? roundMoney((base * Math.min(100, n)) / 100) : roundMoney(n);
 }
 /** Quantités demandées au-delà du stock disponible (stock − pièces promises aux autres commandes). */
 export function stockShortages(lines: Pick<OrderLine, 'variantId' | 'qty'>[], excludeOrderId?: string) {
@@ -404,7 +409,7 @@ export async function recordReturn(o: Order, r: { kept: Record<string, number>; 
   // Ce qui avait été noté d'avance comme « encaissé par le livreur » est remplacé par le montant réellement encaissé au retour.
   const prov = courierProvisional(o);
   const basePays = (o.payments || []).filter((p) => !prov.includes(p));
-  const provNote = prov.length ? `Encaissement livreur noté d'avance (${prov.reduce((t, p) => t + p.amount, 0).toLocaleString('fr-FR')} Ar) remplacé par le montant réel du retour` : '';
+  const provNote = prov.length ? `Encaissement livreur noté d'avance (${fmtMoney(prov.reduce((t, p) => t + p.amount, 0))}) remplacé par le montant réel du retour` : '';
   const keptAny = lines.some((l) => (l.qtyKept ?? 0) > 0);
   const allKept = lines.filter((l) => !l.isChoice).every((l) => (l.qtyKept ?? 0) >= l.qty);
   const status: OrderStatus = !keptAny && !(o.kind === 'exchange' && !o.lines.length) ? 'refused' : allKept ? 'delivered' : 'partial';
@@ -436,8 +441,8 @@ export async function repairExchangeFees() {
     const fee = (o.deliveryFee || 0) - extra;
     const at = new Date().toISOString();
     await save('orders', { id: o.id, deliveryFee: fee, ...(o.feeCharged === o.deliveryFee ? { feeCharged: fee } : {}), exchangeFeeFixed: true,
-      events: [...(o.events || []), { at, text: `Frais de livraison corrigés : ${(o.deliveryFee || 0).toLocaleString('fr-FR')} → ${fee.toLocaleString('fr-FR')} Ar (frais de l'échange comptés deux fois)` }] });
-    await audit('Frais corrigés', `${o.number} : frais de l'échange retirés (${extra.toLocaleString('fr-FR')} Ar en double)`, 'orders', o.id);
+      events: [...(o.events || []), { at, text: `Frais de livraison corrigés : ${(o.deliveryFee || 0).toLocaleString('fr-FR')} → ${fmtMoney(fee)} (frais de l'échange comptés deux fois)` }] });
+    await audit('Frais corrigés', `${o.number} : frais de l'échange retirés (${fmtMoney(extra)} en double)`, 'orders', o.id);
   }
 }
 
@@ -491,10 +496,10 @@ export async function moveExchangeCredit(orderId: string, at: string) {
   const method = (o.payments || []).find((p) => p.receivedBy === 'shop')?.method ?? 'cash';
   const u = currentUser()?.fullName;
   await save('orders', [
-    { id: o.id, payments: [...(o.payments || []), { id: newId(), at, amount: -x, method, receivedBy: 'shop' as const, note: `Reporté sur l’échange ${child.number}`, userName: u }], events: [...(o.events || []), { at, text: `${x.toLocaleString('fr-FR')} Ar déjà payés reportés sur l’échange ${child.number}`, user: u }] },
-    { id: child.id, payments: [...(child.payments || []), { id: newId(), at, amount: x, method, receivedBy: 'shop' as const, note: `Déjà payé sur ${o.number}`, userName: u }], events: [...(child.events || []), { at, text: `${x.toLocaleString('fr-FR')} Ar déjà payés sur ${o.number} (avant l’échange)`, user: u }] },
+    { id: o.id, payments: [...(o.payments || []), { id: newId(), at, amount: -x, method, receivedBy: 'shop' as const, note: `Reporté sur l’échange ${child.number}`, userName: u }], events: [...(o.events || []), { at, text: `${fmtMoney(x)} déjà payés reportés sur l’échange ${child.number}`, user: u }] },
+    { id: child.id, payments: [...(child.payments || []), { id: newId(), at, amount: x, method, receivedBy: 'shop' as const, note: `Déjà payé sur ${o.number}`, userName: u }], events: [...(child.events || []), { at, text: `${fmtMoney(x)} déjà payés sur ${o.number} (avant l’échange)`, user: u }] },
   ]);
-  await audit('Échange', `${o.number} → ${child.number} : ${x} Ar déjà payés reportés`, 'orders', child.id);
+  await audit('Échange', `${o.number} → ${child.number} : ${fmtMoney(x)} déjà payés reportés`, 'orders', child.id);
 }
 
 /** Échange traité directement en boutique (sans livraison). */
@@ -639,9 +644,9 @@ export async function createWalkInSale(d: { lines: OrderLine[]; adjusts?: Adjust
   // Contrôle : grosse remise ou prix baissé à la main → action importante, à vérifier par le gérant.
   if (!internal) {
     const items = d.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
-    if (d.discount > 0 && d.discount >= items * 0.2) await audit('Remise importante', `${number} : remise ${d.discount.toLocaleString('fr-FR')} Ar sur ${items.toLocaleString('fr-FR')} Ar (${Math.round((d.discount / Math.max(1, items)) * 100)} %)`, 'orders', o.id, 'high');
+    if (d.discount > 0 && d.discount >= items * 0.2) await audit('Remise importante', `${number} : remise ${fmtMoney(d.discount)} sur ${fmtMoney(items)} (${Math.round((d.discount / Math.max(1, items)) * 100)} %)`, 'orders', o.id, 'high');
     const lowered = d.lines.filter((l) => l.priceManual && l.unitPrice < linePrice(l.variantId, !!l.wholesale));
-    if (lowered.length) await audit('Prix baissé à la vente', `${number} : ${lowered.map((l) => `${get<Variant>('variants', l.variantId)?.sku ?? '?'} ${l.unitPrice.toLocaleString('fr-FR')} Ar au lieu de ${linePrice(l.variantId, !!l.wholesale).toLocaleString('fr-FR')} Ar`).join(' ; ')}`, 'orders', o.id, 'high');
+    if (lowered.length) await audit('Prix baissé à la vente', `${number} : ${lowered.map((l) => `${get<Variant>('variants', l.variantId)?.sku ?? '?'} ${fmtMoney(l.unitPrice)} au lieu de ${fmtMoney(linePrice(l.variantId, !!l.wholesale))}`).join(' ; ')}`, 'orders', o.id, 'high');
   }
   return o as Order;
 }
@@ -709,7 +714,7 @@ export async function editPayment(o: Order, paymentId: string, amount: number, m
   const payments = o.payments.map((p) => (p.id === paymentId ? { ...p, amount, method, receivedBy: toBy, courierId: toBy === 'courier' ? o.courierId : undefined, ...(atChange ? { at: atChange } : {}),
     edits: [...(p.edits || []), { at, user: u?.fullName, fromAmount: p.amount, toAmount: amount, fromMethod: p.method, toMethod: method, reason, ...(toBy !== p.receivedBy ? { fromBy: p.receivedBy, toBy } : {}), ...(atChange ? { fromAt: p.at, toAt: atChange } : {}) }] } : p));
   const dt = (x: string) => new Date(x).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const text = `Paiement corrigé : ${old.amount.toLocaleString('fr-FR')} Ar (${PAY_METHODS[old.method]}, ${who(old.receivedBy)}) → ${amount.toLocaleString('fr-FR')} Ar (${PAY_METHODS[method]}, ${who(toBy)})${atChange ? ` · date ${dt(old.at)} → ${dt(atChange)}` : ''}${reason ? ` — ${reason}` : ''}`;
+  const text = `Paiement corrigé : ${fmtMoney(old.amount)} (${PAY_METHODS[old.method]}, ${who(old.receivedBy)}) → ${fmtMoney(amount)} (${PAY_METHODS[method]}, ${who(toBy)})${atChange ? ` · date ${dt(old.at)} → ${dt(atChange)}` : ''}${reason ? ` — ${reason}` : ''}`;
   await save('orders', { id: o.id, payments, events: [...(o.events || []), { at, text, user: u?.fullName }] });
   await audit('Paiement corrigé', `${o.number} : ${text}`, 'orders', o.id);
 }
@@ -718,7 +723,7 @@ export async function addPayment(o: Order, p: Omit<Payment, 'id' | 'at' | 'userN
   if (p.at) { const err = paymentDateError(o, p.at); if (err) throw new Error(err); }
   const pay: Payment = { ...p, id: newId(), at: p.at ?? bizNow(), userName: currentUser()?.fullName };
   await save('orders', { id: o.id, payments: [...(o.payments || []), pay] });
-  await audit('Paiement client', `${o.number} : ${pay.amount} Ar (${PAY_METHODS[pay.method]}, ${pay.receivedBy === 'shop' ? 'boutique' : 'livreur'})`, 'orders', o.id);
+  await audit('Paiement client', `${o.number} : ${fmtMoney(pay.amount)} (${PAY_METHODS[pay.method]}, ${pay.receivedBy === 'shop' ? 'boutique' : 'livreur'})`, 'orders', o.id);
 }
 
 // ---------- Comptes des livreurs ----------

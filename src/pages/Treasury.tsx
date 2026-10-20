@@ -1,12 +1,14 @@
 // Trésorerie : soldes des comptes, mouvements, dépenses, autres revenus, virements, opérations récurrentes.
 import { closedBy } from '../lib/closed';
+import { firstNonCash } from '../lib/paymethods';
+import { curSym, moneyInputMode } from '../lib/currency';
 import { useMemo, useRef, useState } from 'react';
 import { useCan } from '../lib/auth';
 import { save, useTable } from '../lib/db';
 import { fmtAr, parseNum, parseAr } from '../lib/catalog';
 import { compressPhoto } from '../lib/images';
 import {
-  ACCOUNTS, ACCOUNT_IDS, MOVE_TYPES, addMove, addTransfer, atFor, balances, confirmRecurring, dayOf, deleteMove, dueRecurring, flows, skipRecurring, today,
+  ACCOUNTS, accountIds, allAccountIds, MOVE_TYPES, addMove, addTransfer, atFor, balances, confirmRecurring, dayOf, deleteMove, dueRecurring, flows, skipRecurring, today,
   type AccountId, type CashMove, type FinanceCategory, type Flow, type MoveType, type Recurring,
 } from '../lib/money';
 import type { Order } from '../lib/orders';
@@ -56,8 +58,9 @@ function Accounts() {
   const list = flows(period.from, period.to, account || undefined);
   const inSum = list.filter((f) => f.amount > 0 && f.move?.type !== 'transfer').reduce((s, f) => s + f.amount, 0);
   const outSum = list.filter((f) => f.amount < 0 && f.move?.type !== 'transfer').reduce((s, f) => s - f.amount, 0);
-  const shown = ACCOUNT_IDS.filter((a) => a !== 'bank' || b.bank || list.some((f) => f.account === 'bank'));
-  const total = ACCOUNT_IDS.reduce((s, a) => s + b[a], 0);
+  // Comptes affichés : moyens actifs, et tout compte qui a de l'argent ou des mouvements (même désactivé).
+  const shown = allAccountIds().filter((a) => (a !== 'bank' && accountIds().includes(a)) || b[a] || list.some((f) => f.account === a));
+  const total = allAccountIds().reduce((s, a) => s + (b[a] || 0), 0);
   return (
     <>
       <div className="stat-grid">
@@ -114,7 +117,7 @@ function FlowRow({ f, onDelete }: { f: Flow; onDelete?: () => void }) {
   );
 }
 
-const accountOptions = ACCOUNT_IDS.map((a) => ({ value: a, label: ACCOUNTS[a] }));
+const accountOptions = () => accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }));
 
 function MoveForm({ kind, onClose }: { kind: FormKind; onClose: () => void }) {
   const cats = useTable<FinanceCategory>('financeCategories').filter((c) => c.active !== false && c.kind === (kind === 'income' ? 'income' : 'expense')).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
@@ -146,8 +149,8 @@ function MoveForm({ kind, onClose }: { kind: FormKind; onClose: () => void }) {
       footer={<><Button variant="ghost" onClick={onClose}>Annuler</Button><Button busy={busy} disabled={!n || dayLocked || !!weekClosed || (withCat && !cat)} onClick={submit}>Enregistrer</Button></>}>
       <div className="stack">
         <div className="grid-2">
-          <TextField label="Montant (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" autoFocus />
-          <SelectField label={kind === 'expense' || kind === 'owner_out' ? 'Payé depuis' : kind === 'opening' ? 'Compte' : 'Reçu sur'} value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions} />
+          <TextField label={`Montant (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} autoFocus />
+          <SelectField label={kind === 'expense' || kind === 'owner_out' ? 'Payé depuis' : kind === 'opening' ? 'Compte' : 'Reçu sur'} value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions()} />
           {withCat && <SelectField label="Catégorie" required value={cat} onChange={setCat} options={cats.map((c) => ({ value: c.id, label: c.name }))} />}
           <TextField label="Date" type="date" value={date} max={today()} onChange={setDate} />
         </div>
@@ -170,7 +173,7 @@ function MoveForm({ kind, onClose }: { kind: FormKind; onClose: () => void }) {
 
 function TransferForm({ onClose }: { onClose: () => void }) {
   const locked = useDayLock();
-  const [from, setFrom] = useState<AccountId>('mvola');
+  const [from, setFrom] = useState<AccountId>(firstNonCash());
   const [to, setTo] = useState<AccountId>('cash');
   const [amount, setAmount] = useState('');
   const [fee, setFee] = useState('');
@@ -183,10 +186,10 @@ function TransferForm({ onClose }: { onClose: () => void }) {
       <div className="stack">
         <p className="small muted">Ex. retrait MVola vers la caisse, dépôt de la caisse à la banque.</p>
         <div className="grid-2">
-          <SelectField label="Depuis" value={from} onChange={(v) => setFrom(v as AccountId)} options={accountOptions} />
-          <SelectField label="Vers" value={to} onChange={(v) => setTo(v as AccountId)} options={accountOptions} />
-          <TextField label="Montant (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" />
-          <TextField label="Frais de retrait (Ar, facultatif)" value={fee} onChange={setFee} inputMode="numeric" />
+          <SelectField label="Depuis" value={from} onChange={(v) => setFrom(v as AccountId)} options={accountOptions()} />
+          <SelectField label="Vers" value={to} onChange={(v) => setTo(v as AccountId)} options={accountOptions()} />
+          <TextField label={`Montant (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} />
+          <TextField label={`Frais de retrait (${curSym()}, facultatif)`} value={fee} onChange={setFee} inputMode={moneyInputMode()} />
           <TextField label="Date" type="date" value={date} max={today()} onChange={setDate} />
           <TextField label="Note (facultatif)" value={note} onChange={setNote} />
         </div>
@@ -267,8 +270,8 @@ function ConfirmRecurring({ d, onClose }: { d: ReturnType<typeof dueRecurring>[n
     <Modal title={`${d.r.label} — ${fmtDate(d.date)}`} onClose={onClose}
       footer={<><Button variant="ghost" onClick={onClose}>Annuler</Button><Button disabled={!parseAr(amount)} onClick={async () => { await confirmRecurring(d, parseAr(amount)!, account); toast('Opération enregistrée'); onClose(); }}>Confirmer le paiement</Button></>}>
       <div className="grid-2">
-        <TextField label="Montant (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" />
-        <SelectField label={d.r.kind === 'expense' ? 'Payé depuis' : 'Reçu sur'} value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions} />
+        <TextField label={`Montant (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} />
+        <SelectField label={d.r.kind === 'expense' ? 'Payé depuis' : 'Reçu sur'} value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions()} />
       </div>
     </Modal>
   );
@@ -345,8 +348,8 @@ function RecurringForm({ rec, onClose }: { rec?: Recurring; onClose: () => void 
         <TextField label="Libellé (ex. Loyer boutique)" required value={label} onChange={setLabel} />
         <div className="grid-2">
           <SelectField label="Catégorie" required value={cat} onChange={setCat} options={list.map((c) => ({ value: c.id, label: c.name }))} />
-          <TextField label="Montant habituel (Ar)" required value={amount} onChange={setAmount} inputMode="numeric" />
-          <SelectField label="Compte" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions} />
+          <TextField label={`Montant habituel (${curSym()})`} required value={amount} onChange={setAmount} inputMode={moneyInputMode()} />
+          <SelectField label="Compte" value={account} onChange={(v) => setAccount(v as AccountId)} options={accountOptions()} />
           <TextField label="Jour du mois" value={day} onChange={setDay} inputMode="numeric" />
           <TextField label="À partir du mois" type="month" value={start} onChange={setStart} />
         </div>

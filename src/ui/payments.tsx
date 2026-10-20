@@ -1,12 +1,16 @@
 // Paiement en plusieurs tranches : ex. article à 10 000 Ar payé 5 000 Ar en espèces + 5 000 Ar en MVola.
 // Utilisé à l'encaissement d'une vente sur place, à la création d'une commande et pour un paiement reçu ensuite.
 import { PAY_METHODS, type PayMethod } from '../lib/orders';
+import { firstNonCash, methodIds, methodLabel, payMethods } from '../lib/paymethods';
+import { curSym, roundMoney, moneyDecimals, moneyInputMode } from '../lib/currency';
 import { fmtAr, parseAr } from '../lib/catalog';
 import { Button, IconButton, TextField } from './kit';
 
 export interface PayLine { method: PayMethod; amount: string; ref: string }
-const MOBILE: PayMethod = 'mvola';
-const round100 = (n: number) => Math.round(n / 100) * 100;
+/** Moyen proposé pour la 2e tranche : le premier moyen hors espèces de la boutique. */
+const MOBILE = (): PayMethod => firstNonCash();
+/** Moitié arrondie : à 100 près pour une devise sans centimes (Ar, FCFA), au centime sinon. */
+const round100 = (n: number) => (moneyDecimals() ? roundMoney(n) : Math.round(n / 100) * 100);
 
 /** Remplit automatiquement la dernière tranche avec le reste quand on modifie une autre tranche. */
 export function rebalance(lines: PayLine[], changed: number, total: number): PayLine[] {
@@ -18,11 +22,11 @@ export function rebalance(lines: PayLine[], changed: number, total: number): Pay
 /** Coupe un montant en deux tranches : espèces + mobile money (moitié chacune, arrondie à 100 Ar ; modifiable). */
 export function splitInTwo(total: number): PayLine[] {
   const a = round100(total / 2);
-  return [{ method: 'cash', amount: String(a), ref: '' }, { method: MOBILE, amount: String(Math.max(0, total - a)), ref: '' }];
+  return [{ method: 'cash', amount: String(a), ref: '' }, { method: MOBILE(), amount: String(Math.max(0, total - a)), ref: '' }];
 }
 export const payLinesSum = (lines: PayLine[]) => lines.reduce((s, l) => s + (parseAr(l.amount) || 0), 0);
 
-/** Une ou plusieurs tranches de paiement, chacune avec son moyen (espèces, MVola, Orange Money, Airtel Money…). */
+/** Une ou plusieurs tranches de paiement, chacune avec son moyen (espèces, mobile money, carte… selon la boutique). */
 export function PayLines({ lines, onChange, total, mode = 'buttons', allowEmpty }: { lines: PayLine[]; onChange: (l: PayLine[]) => void; total: number; mode?: 'buttons' | 'select'; allowEmpty?: boolean }) {
   const sum = payLinesSum(lines);
   const rest = total - sum;
@@ -32,15 +36,15 @@ export function PayLines({ lines, onChange, total, mode = 'buttons', allowEmpty 
   };
   const add = () => {
     const used = new Set(lines.map((l) => l.method));
-    const method = (['cash', MOBILE, 'orange', 'airtel'] as PayMethod[]).find((m) => !used.has(m) && m in PAY_METHODS) ?? MOBILE;
+    const method = methodIds().find((m) => !used.has(m)) ?? MOBILE();
     onChange([...lines, { method, amount: rest > 0 ? String(rest) : '', ref: '' }]);
   };
-  const label = (i: number) => (lines.length > 1 ? `Tranche ${i + 1} (Ar)` : 'Montant (Ar)');
+  const label = (i: number) => (lines.length > 1 ? `Tranche ${i + 1} (${curSym()})` : `Montant (${curSym()})`);
   return (
     <div className="stack-s pay-lines">
       {total > 0 && lines.length === 1 && (
         <div className="row" style={{ gap: 6 }}>
-          <Button variant="ghost" className="btn-sm" icon="plus" onClick={() => onChange(splitInTwo(total))}>Payer en 2 tranches (espèces + mobile money)</Button>
+          <Button variant="ghost" className="btn-sm" icon="plus" onClick={() => onChange(splitInTwo(total))}>{`Payer en 2 tranches (espèces + ${payMethods().find((m) => m.id === MOBILE())?.kind === 'mobile' ? 'mobile money' : methodLabel(MOBILE()).toLowerCase()})`}</Button>
         </div>
       )}
       {lines.map((p, i) => (
@@ -48,16 +52,16 @@ export function PayLines({ lines, onChange, total, mode = 'buttons', allowEmpty 
           {lines.length > 1 && <strong className="small">Tranche {i + 1}</strong>}
           {mode === 'buttons' ? (
             <div className="segmented" role="group" aria-label={lines.length > 1 ? `Moyen de paiement tranche ${i + 1}` : 'Moyen de paiement'}>
-              {(Object.keys(PAY_METHODS) as PayMethod[]).map((m) => <button key={m} type="button" aria-pressed={p.method === m} onClick={() => set(i, { method: m })}>{PAY_METHODS[m]}</button>)}
+              {[...methodIds(), ...(methodIds().includes(p.method) ? [] : [p.method])].map((m) => <button key={m} type="button" aria-pressed={p.method === m} onClick={() => set(i, { method: m })}>{PAY_METHODS[m]}</button>)}
             </div>
           ) : (
             <div className="field"><label htmlFor={`pm-${i}`}>Moyen</label>
               <select id={`pm-${i}`} aria-label={lines.length > 1 ? `Moyen tranche ${i + 1}` : 'Moyen'} value={p.method} onChange={(e) => set(i, { method: e.target.value as PayMethod })}>
-                {Object.entries(PAY_METHODS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {[...methodIds(), ...(methodIds().includes(p.method) ? [] : [p.method])].map((v) => <option key={v} value={v}>{PAY_METHODS[v]}</option>)}
               </select></div>
           )}
           <div className="row" style={{ alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}><TextField label={label(i)} value={p.amount} onChange={(v) => set(i, { amount: v })} inputMode="numeric" hint={p.amount && parseAr(p.amount) && /[^\d]/.test(p.amount) ? `= ${fmtAr(parseAr(p.amount))}` : undefined} /></div>
+            <div style={{ flex: 1 }}><TextField label={label(i)} value={p.amount} onChange={(v) => set(i, { amount: v })} inputMode={moneyInputMode()} hint={p.amount && parseAr(p.amount) && /[^\d]/.test(p.amount) ? `= ${fmtAr(parseAr(p.amount))}` : undefined} /></div>
             {p.method !== 'cash' && <div style={{ flex: 1 }}><TextField label="Référence (facultatif)" value={p.ref} onChange={(v) => set(i, { ref: v })} /></div>}
             {lines.length > 1 && <IconButton icon="trash" label={`Retirer la tranche ${i + 1}`} onClick={() => onChange(lines.filter((_, j) => j !== i))} />}
           </div>
