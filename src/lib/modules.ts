@@ -3,11 +3,12 @@
 import { get, save, useTable } from './db';
 import type { Company } from './settings';
 
-export type ModuleKey = 'orders' | 'deliveries' | 'prospects' | 'boosts' | 'handovers' | 'eveningRecap' | 'weeklyPayout';
+export type ModuleKey = 'pages' | 'orders' | 'deliveries' | 'prospects' | 'boosts' | 'handovers' | 'eveningRecap' | 'weeklyPayout';
 
 export interface ModuleDef { key: ModuleKey; label: string; description: string; default: boolean; needs?: ModuleKey }
 
 export const MODULES: ModuleDef[] = [
+  { key: 'pages', label: 'Pages et variantes', description: 'Plusieurs pages (ex. pages Facebook) ou rayons, chacun avec ses variantes (modèle, couleur, pointure…) et ses vendeurs. Sans cette fonction, les articles sont ajoutés directement, dans une seule boutique.', default: false },
   { key: 'orders', label: 'Commandes clients', description: 'Commandes reçues par téléphone, WhatsApp ou réseaux sociaux, préparées puis remises au client.', default: true },
   { key: 'deliveries', label: 'Livraisons et livreurs', description: 'Zones et frais de livraison, livreurs, colis en livraison et argent rapporté par les livreurs.', default: true, needs: 'orders' },
   { key: 'prospects', label: 'Clients à suivre', description: 'Clients intéressés à relancer avant qu’ils commandent.', default: false, needs: 'orders' },

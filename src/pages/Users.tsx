@@ -1,4 +1,5 @@
 // Gestion des utilisateurs : seul l'admin crée les comptes et attribue les rôles.
+import { useModule } from '../lib/modules';
 import { useMemo, useState } from 'react';
 import { roundMoney } from '../lib/currency';
 import { userLimit } from '../lib/license';
@@ -151,6 +152,7 @@ function UserForm({ user, me, roles, users, onClose, onCreated }: { user: User |
   const freeCouriers = couriers.filter((c) => !c.removed && (c.id === user?.courierId || !users.some((u) => u.courierId === c.id)));
   const [courierId, setCourierId] = useState(user?.courierId ?? '__new');
   const pages = useTable<Category>('categories').filter((c) => !c.parentId && !c.removed).sort((a, b) => a.name.localeCompare(b.name));
+  const pagesOn = useModule('pages');
   // Mot de passe : visible et modifiable uniquement par le super-admin et le gérant.
   const canSetPwd = me.roleId === SUPERADMIN_ROLE || me.roleId === ADMIN_ROLE;
   const [pwd, setPwd] = useState(user ? '' : tempPassword());
@@ -215,7 +217,7 @@ function UserForm({ user, me, roles, users, onClose, onCreated }: { user: User |
             <SelectField label="Fiche livreur" value={courierId} onChange={setCourierId} options={[{ value: '__new', label: '+ Créer sa fiche (même nom et téléphone)' }, ...freeCouriers.map((c) => ({ value: c.id, label: c.name }))]} hint="Le livreur verra seulement ses colis et son compte. Ses livraisons et ses versements sont ceux de cette fiche." />
           </div>
         )}
-        {!isCourier && <div className="card stack-s" style={{ background: 'var(--surface-2)' }}>
+        {!isCourier && (pagesOn || pageIds.length > 0) && <div className="card stack-s" style={{ background: 'var(--surface-2)' }}>
           <strong>Pages attribuées (catégories)</strong>
           <Help>Le vendeur verra d’abord le stock, les articles, ses commandes et ses clients de ces pages. Les livraisons restent visibles par tous. Ne cochez rien pour qu’il voie tout.</Help>
           {pages.length === 0 ? <p className="small muted">Créez d’abord les catégories (une par page) dans Articles.</p> : (

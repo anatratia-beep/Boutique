@@ -1,4 +1,5 @@
 // Import Excel : modèles à télécharger, reprise du stock, fichiers de commande Chine, fournisseurs, catégories.
+import { useModule } from '../lib/modules';
 import { useMemo, useState } from 'react';
 import { curSym } from '../lib/currency';
 import { audit, currentUser, useCan } from '../lib/auth';
@@ -138,6 +139,7 @@ export function ImportPage() {
   const [pageId, setPageId] = useState('');
   const cats = useTable<Category>('categories');
   const [tplCat, setTplCat] = useState('');
+  const pagesOn = useModule('pages');
   const [simpleOk, setSimpleOk] = useState(false);
   const [repairNote, setRepairNote] = useState<string | null>(null);
   const [hash, setHash] = useState('');
@@ -193,7 +195,7 @@ export function ImportPage() {
       {sheets && kind === 'fournisseurs' && <SimpleImport kind="fournisseurs" sheets={sheets} onDone={() => setSheets(null)} />}
       {sheets && kind === 'categories' && <SimpleImport kind="categories" sheets={sheets} onDone={() => setSheets(null)} />}
 
-      <div className="card stack">
+      {pagesOn && <div className="card stack">
         <div><h2>Stock de départ d’une page (avec ses variantes)</h2>
           <ol className="small steps-list">
             <li><strong>Créez la page et ses variantes</strong> dans <a href="#/pages">Pages et variantes</a> (ex. page « Sandale » : Modèle, Couleur, Pointure). Les valeurs (S5, Rose, 37…) peuvent rester incomplètes.</li>
@@ -206,7 +208,7 @@ export function ImportPage() {
           <Button icon="download" disabled={!tplCat} onClick={async () => { const c = get<Category>('categories', tplCat)!; downloadBlob(await categoryTemplate(c), `Tresor-en-ligne-${(c.code || 'page').toLowerCase()}-articles.xlsx`); }}>Télécharger le fichier de la page</Button>
         </div>
         {!cats.some((c) => activeAttrs(c).length) && <p className="small muted">Aucune page n’a encore de variantes.</p>}
-      </div>
+      </div>}
 
       <div className="card stack">
         <div><h2>Autres modèles à remplir</h2><p className="small muted">Colonnes jaunes à remplir, une ligne d’exemple et un onglet « Mode d’emploi » dans chaque fichier.</p></div>

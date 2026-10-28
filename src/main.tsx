@@ -4,13 +4,13 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { DB_VERSION, getMeta, newId, openDb, setMeta } from './lib/db';
 import { seedAccounts } from './lib/auth';
-import { seedZones } from './lib/orders';
+import { removeExampleZones, seedZones } from './lib/orders';
 import { seedFinance } from './lib/money';
 import { repairAfterReset } from './lib/backup';
 import { consumeEmailLink } from './lib/maintenance';
 import { startSync } from './lib/sync';
 import { App } from './App';
-import { licenseState } from './lib/license';
+import { applyLicenseName, licenseState } from './lib/license';
 import { ActivationScreen } from './pages/License';
 import { InstallScreen, wantsInstallPage } from './pages/Install';
 import { initialLang, loadLang, patchDialogs, setLang } from './lib/i18n';
@@ -63,6 +63,8 @@ async function boot() {
     }
     await seedAccounts();
     await seedZones();
+    await removeExampleZones().catch(() => {});
+    await applyLicenseName().catch(() => {});
     await seedFinance();
     await repairAfterReset().catch(() => {});
     startSync();

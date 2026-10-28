@@ -16,6 +16,7 @@ import { photoBytes } from '../lib/images';
 import { Badge, Button, Confirm, Empty, IconButton, Modal, PageHead, SelectField, TextField, fmtDateTime, navigate, toast, useRoute, MoreMatches, useKeep } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { rootOf } from '../lib/scope';
+import { useModule } from '../lib/modules';
 import { findDuplicates, resolveDuplicates, usesOf, type DupGroup } from '../lib/duplicates';
 import { ArticleBuilder, AttrBadges } from './Categories';
 import { LOT_STATUS, LotDetail, LotForm, NewArticleChooser, TierEditor, lotPhoto, tierText } from './Lots';
@@ -65,6 +66,8 @@ function ProductList() {
   const [sf, setSf] = useKeep<StockFilter>('prod.sf', '');
   const [showArchived, setShowArchived] = useKeep('prod.archived', false);
   const [creating, setCreating] = useState(false);
+  // Sans « Pages et variantes » : un article se crée directement (nom, prix, couleurs / tailles facultatives).
+  const pagesOn = useModule('pages');
   const [choosing, setChoosing] = useState(false);
   const [lotNew, setLotNew] = useState(false);
   const [catsOpen, setCatsOpen] = useState(false);
@@ -154,7 +157,7 @@ function ProductList() {
           <Empty icon="store" title={products.length ? 'Aucun article ne correspond' : 'Aucun article pour l’instant'}>
             {!products.length && can('catalog.edit') && <div className="row" style={{ justifyContent: 'center' }}>
               <Button icon="upload" onClick={() => navigate('/import')}>Importer depuis Excel</Button>
-              <Button variant="ghost" icon="plus" onClick={() => setCreating(true)}>Créer un article</Button>
+              <Button variant="ghost" icon="plus" onClick={() => (pagesOn ? setCreating(true) : setSimple(true))}>Créer un article</Button>
             </div>}
           </Empty>
         ) : (
@@ -185,10 +188,10 @@ function ProductList() {
         )}
       </div>
       {list.length > limit && <Button variant="ghost" onClick={() => setLimit(limit + 100)}>Afficher plus ({list.length - limit})</Button>}
-      {choosing && <NewArticleChooser onClose={() => setChoosing(false)} onArticle={() => { setChoosing(false); setCreating(true); }} onLot={() => { setChoosing(false); setLotNew(true); }} />}
+      {choosing && <NewArticleChooser onClose={() => setChoosing(false)} onArticle={() => { setChoosing(false); if (pagesOn) setCreating(true); else setSimple(true); }} onLot={() => { setChoosing(false); setLotNew(true); }} />}
       {lotNew && <LotForm onClose={() => setLotNew(false)} onSaved={(p) => navigate('/articles/' + p.id)} />}
       {creating && <ArticleBuilder cat={cat ? get<Category>('categories', cat) : undefined} onClose={() => setCreating(false)} />}
-      {can('catalog.edit') && <p className="small muted">Article sans variantes (ancien mode) : <button type="button" className="link-btn" onClick={() => setSimple(true)}>créer un article simple</button></p>}
+      {pagesOn && can('catalog.edit') && <p className="small muted">Article sans variantes (ancien mode) : <button type="button" className="link-btn" onClick={() => setSimple(true)}>créer un article simple</button></p>}
       {simple && <ProductForm onClose={() => setSimple(false)} onSaved={(p) => navigate('/articles/' + p.id)} />}
       {catsOpen && <CategoriesModal onClose={() => setCatsOpen(false)} />}
     </>

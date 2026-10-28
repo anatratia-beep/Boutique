@@ -7,6 +7,7 @@
 // La clé est vérifiée avec la clé publique du vendeur : impossible de fabriquer une clé sans sa clé secrète.
 import { cloudSession, connectCloud, disconnectCloud } from './sync';
 import { loc } from './i18n';
+import { get as dbGet, save as dbSave } from './db';
 
 /** Clé publique du vendeur (ECDSA P-256). La clé secrète correspondante n'est JAMAIS dans ce dépôt. */
 const VENDOR_PUBLIC_KEY: JsonWebKey = {
@@ -127,6 +128,21 @@ async function decode(key: string): Promise<LicenseInfo | null> {
 /** Dernière licence valide vue sur cet appareil (limites de comptes, affichage). */
 let current: LicenseInfo | null = null;
 export const currentLicense = () => current;
+
+/** Le nom de la société vient de la licence (champ « Client » de la clé) : le client ne peut pas le changer.
+ *  Sur l'ordinateur de développement, seulement si le test le demande (localStorage boutique.lockName). */
+export const nameLocked = () => {
+  if (!current?.client?.trim()) return false;
+  if (typeof location !== 'undefined' && location.hostname === 'localhost') { try { return localStorage.getItem('boutique.lockName') === '1'; } catch { return false; } }
+  return true;
+};
+/** Recopie le nom de la licence dans la fiche Société (au démarrage, après activation ou renouvellement). */
+export async function applyLicenseName() {
+  if (!nameLocked()) return;
+  const name = current!.client.trim();
+  const c = dbGet<{ id: string; name?: string }>('settings', 'company');
+  if (c?.name !== name) await dbSave('settings', { id: 'company', name } as any);
+}
 
 async function validity(info: LicenseInfo): Promise<LicenseState> {
   // Protection contre le recul de la date du téléphone pour prolonger une licence.

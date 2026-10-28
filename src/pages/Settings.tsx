@@ -22,7 +22,7 @@ import { LangPicker } from '../ui/langPicker';
 import { MODULES, moduleOn, setModule, type ModuleKey } from '../lib/modules';
 import { tr } from '../lib/i18n';
 import { applyPendingUpdate, checkForUpdate, isAndroidApp, DOWNLOAD_PAGE } from '../lib/liveUpdate';
-import { CLOUD_ENABLED } from '../lib/license';
+import { CLOUD_ENABLED, nameLocked } from '../lib/license';
 import { actionsSince, createRestorePoint, restorePoints, restoreToPoint, type RestorePoint } from '../lib/restorePoints';
 import { loc } from '../lib/i18n';
 
@@ -102,7 +102,9 @@ function CompanyTab() {
         }} />
       </div>
       <div className="grid-2">
-        <TextField label="Nom de la société" required value={form.name} onChange={set('name')} />
+        {nameLocked()
+          ? <TextField label="Nom de la société" required value={form.name} onChange={() => {}} readOnly hint="Fixé par votre licence. Pour le changer, demandez une nouvelle clé au vendeur." />
+          : <TextField label="Nom de la société" required value={form.name} onChange={set('name')} />}
         <TextField label="Slogan (facultatif)" value={form.slogan ?? ''} onChange={set('slogan')} />
         <TextField label="Téléphone" value={form.phone ?? ''} onChange={set('phone')} type="tel" />
         <TextField label="Adresse" value={form.address ?? ''} onChange={set('address')} />

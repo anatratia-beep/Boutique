@@ -190,6 +190,20 @@ export async function seedZones() {
   await applyRemote(DEFAULT_ZONES.map(([id, name, fee], i) => ({ tbl: 'zones', id, data: { id, name, fee, order: i, active: true, pickup: id === 'zone-retrait' || undefined, createdAt: SEED, updatedAt: SEED } as BaseRecord })));
 }
 
+/** Anciennes versions : les zones d'exemple de Tana (centre-ville, périphérie…) étaient créées chez tout le monde.
+ *  On les retire si la boutique ne les a pas renommées ; une zone déjà utilisée par une commande est seulement
+ *  désactivée (plus proposée), pour que l'historique garde son nom. */
+export async function removeExampleZones() {
+  if (typeof location !== 'undefined' && location.hostname === 'localhost') { try { if (localStorage.getItem('boutique.cleanZones') !== '1') return; } catch { return; } }
+  const used = new Set(all<Order>('orders').map((o) => o.zoneId));
+  for (const [id, name] of TEST_ZONES) {
+    const z = get<Zone>('zones', id);
+    if (!z || z.name !== name) continue;
+    if (used.has(id)) { if (z.active !== false) await save('zones', { id, active: false }); }
+    else await remove('zones', id);
+  }
+}
+
 // ---------- Date de commande ----------
 /** Date à laquelle la commande est rattachée (listes, semaine, acompte) : date de commande, sinon date de saisie. */
 export const orderDay = (o: Pick<Order, 'orderDate' | 'createdAt'>) => o.orderDate || o.createdAt;

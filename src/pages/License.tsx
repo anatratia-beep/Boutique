@@ -1,6 +1,6 @@
 // Écran d'activation (licence) et rappel avant expiration.
 import { useEffect, useState } from 'react';
-import { activate, deviceCode, frDate, licenseHeartbeat, licenseState, VENDOR_CONTACT, VENDOR_WHATSAPP, type LicenseState } from '../lib/license';
+import { activate, applyLicenseName, deviceCode, frDate, licenseHeartbeat, licenseState, VENDOR_CONTACT, VENDOR_WHATSAPP, type LicenseState } from '../lib/license';
 import { Button } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { AuthShell } from './Auth';
@@ -125,7 +125,7 @@ export function LicenseCard() {
         e.preventDefault();
         setMsg({ ok: true, text: 'Vérification…' });
         const r = await activate(key);
-        if (r.ok) { setS(r); setKey(''); setMsg({ ok: true, text: 'Nouvelle clé enregistrée.' }); }
+        if (r.ok) { setS(r); setKey(''); await applyLicenseName(); setMsg({ ok: true, text: 'Nouvelle clé enregistrée.' }); }
         else setMsg({ ok: false, text: r.message });
       }}>
         <div className="field">

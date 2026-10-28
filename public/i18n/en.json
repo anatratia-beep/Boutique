@@ -4422,4 +4422,6 @@
 "{0} : activée":"{0}: enabled",
 "{0} : désactivée":"{0}: disabled",
 "Indiquez le taux du RMB (combien de {0} pour 1 ¥).":"Enter the RMB rate (how many {0} for 1 ¥).",
-"code appareil":"device code"}
+"code appareil":"device code",
+"Plusieurs pages (ex. pages Facebook) ou rayons, chacun avec ses variantes (modèle, couleur, pointure…) et ses vendeurs. Sans cette fonction, les articles sont ajoutés directement, dans une seule boutique.":"Several pages (e.g. Facebook pages) or departments, each with its own variants (model, colour, shoe size…) and sellers. Without this feature, products are added directly, in a single shop.",
+"Fixé par votre licence. Pour le changer, demandez une nouvelle clé au vendeur.":"Set by your licence. To change it, ask the seller for a new key."}
