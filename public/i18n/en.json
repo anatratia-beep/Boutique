@@ -4424,4 +4424,15 @@
 "Indiquez le taux du RMB (combien de {0} pour 1 ¥).":"Enter the RMB rate (how many {0} for 1 ¥).",
 "code appareil":"device code",
 "Plusieurs pages (ex. pages Facebook) ou rayons, chacun avec ses variantes (modèle, couleur, pointure…) et ses vendeurs. Sans cette fonction, les articles sont ajoutés directement, dans une seule boutique.":"Several pages (e.g. Facebook pages) or departments, each with its own variants (model, colour, shoe size…) and sellers. Without this feature, products are added directly, in a single shop.",
-"Fixé par votre licence. Pour le changer, demandez une nouvelle clé au vendeur.":"Set by your licence. To change it, ask the seller for a new key."}
+"Fixé par votre licence. Pour le changer, demandez une nouvelle clé au vendeur.":"Set by your licence. To change it, ask the seller for a new key.",
+"Ajouter un moyen de paiement":"Add a payment method",
+"Autre moyen (nom libre)":"Other method (free name)",
+"Bon d’achat":"Voucher",
+"Crédit client":"Customer credit",
+"Ex. le nom de votre mobile money":"E.g. the name of your mobile money",
+"Situation des ventes":"Sales overview",
+"Stock restant":"Stock remaining",
+"Terminal de paiement (TPE)":"Card terminal (POS)",
+"Touchez ceux que vos clients utilisent dans votre pays, puis « Enregistrer ». Ils apparaissent ensuite à chaque encaissement, dans la trésorerie et sur l’accueil.":"Tap the ones your customers use in your country, then “Save”. They then appear at each payment, in the treasury and on the home screen.",
+"valeur {0} (coût)":"value {0} (cost)",
+"valeur {0} (prix de vente)":"value {0} (selling price)"}

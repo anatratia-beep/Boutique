@@ -1,6 +1,6 @@
 // Paramètres : société, apparence, cloud, sauvegardes, système.
 import { useEffect, useRef, useState } from 'react';
-import { KIND_LABELS, SUGGESTED, payMethods, savePayMethods, type PayKind, type PayMethodDef } from '../lib/paymethods';
+import { CATALOG, KIND_LABELS, payMethods, savePayMethods, type PayKind, type PayMethodDef } from '../lib/paymethods';
 import { parseNum } from '../lib/catalog';
 import { fmtMoney, curSym, moneyInputMode, parseMoney, CURRENCIES } from '../lib/currency';
 import { audit, useCan } from '../lib/auth';
@@ -215,11 +215,13 @@ function PayMethodsTab() {
   const changed = JSON.stringify(list) !== JSON.stringify(saved);
   const up = (i: number, patch: Partial<PayMethodDef>) => setList(list.map((m, j) => (j === i ? { ...m, ...patch } : m)));
   const move = (i: number, d: -1 | 1) => { const j = i + d; if (j < 1 || j >= list.length) return; const n = [...list]; [n[i], n[j]] = [n[j], n[i]]; setList(n); };
+  const [kind, setKind] = useState<PayKind>('mobile');
+  const has = (label: string) => list.some((m) => m.label.toLowerCase() === label.toLowerCase());
+  const push = (label: string, k: PayKind) => setList([...list, { id: 'pm_' + newId().replace(/[^a-z0-9]/gi, '').slice(-8).toLowerCase(), label, kind: k, active: true }]);
   const add = () => {
     const label = name.trim(); if (!label) return;
-    if (list.some((m) => m.label.toLowerCase() === label.toLowerCase())) return toast('Ce moyen existe déjà (réactivez-le s’il est désactivé).', 'error');
-    const kind: PayKind = /carte|card|visa/i.test(label) ? 'card' : /virement|banque|bank|chèque|cheque/i.test(label) ? 'bank' : /paypal/i.test(label) ? 'other' : 'mobile';
-    setList([...list, { id: 'pm_' + newId().replace(/[^a-z0-9]/gi, '').slice(-8).toLowerCase(), label, kind, active: true }]); setName('');
+    if (has(label)) return toast('Ce moyen existe déjà (réactivez-le s’il est désactivé).', 'error');
+    push(label, kind); setName('');
   };
   return (
     <div className="card stack">
@@ -240,10 +242,23 @@ function PayMethodsTab() {
           ))}
         </tbody>
       </table></div>
-      <div className="row" style={{ alignItems: 'flex-end' }}>
-        <div style={{ flex: 1, minWidth: 200 }}><TextField label="Ajouter un moyen" value={name} onChange={setName} list="pm-suggest" placeholder="Ex. Wave, MTN MoMo, Carte bancaire…" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
-        <datalist id="pm-suggest">{SUGGESTED.filter((x) => !list.some((m) => m.label.toLowerCase() === x.toLowerCase())).map((x) => <option key={x} value={x} />)}</datalist>
-        <Button variant="ghost" icon="plus" onClick={add} disabled={!name.trim()}>Ajouter</Button>
+      <div className="stack-s">
+        <h3>Ajouter un moyen de paiement</h3>
+        <p className="small muted">Touchez ceux que vos clients utilisent dans votre pays, puis « Enregistrer ». Ils apparaissent ensuite à chaque encaissement, dans la trésorerie et sur l’accueil.</p>
+        {CATALOG.map((g) => {
+          const free = g.names.filter((n) => !has(n));
+          return free.length ? (
+            <div key={g.kind} className="stack-s">
+              <span className="small"><strong>{KIND_LABELS[g.kind]}</strong></span>
+              <div className="row" style={{ gap: 6 }}>{free.map((n) => <button key={n} type="button" className="chip" onClick={() => push(n, g.kind)}>+ {n}</button>)}</div>
+            </div>
+          ) : null;
+        })}
+        <div className="row" style={{ alignItems: 'flex-end' }}>
+          <div style={{ flex: 2, minWidth: 180 }}><TextField label="Autre moyen (nom libre)" value={name} onChange={setName} placeholder="Ex. le nom de votre mobile money" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} /></div>
+          <div style={{ flex: 1, minWidth: 150 }}><SelectField label="Type" value={kind} onChange={(v) => setKind(v as PayKind)} options={(Object.keys(KIND_LABELS) as PayKind[]).filter((k) => k !== 'cash').map((k) => ({ value: k, label: KIND_LABELS[k] }))} /></div>
+          <Button variant="ghost" icon="plus" onClick={add} disabled={!name.trim()}>Ajouter</Button>
+        </div>
       </div>
       <div className="row">
         <Button icon="check" busy={busy} disabled={!changed || list.some((m) => !m.label.trim())} onClick={async () => {

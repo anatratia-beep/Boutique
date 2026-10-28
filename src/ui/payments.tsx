@@ -42,7 +42,7 @@ export function PayLines({ lines, onChange, total, mode = 'buttons', allowEmpty 
   const label = (i: number) => (lines.length > 1 ? `Tranche ${i + 1} (${curSym()})` : `Montant (${curSym()})`);
   return (
     <div className="stack-s pay-lines">
-      {total > 0 && lines.length === 1 && (
+      {total > 0 && lines.length === 1 && MOBILE() !== 'cash' && (
         <div className="row" style={{ gap: 6 }}>
           <Button variant="ghost" className="btn-sm" icon="plus" onClick={() => onChange(splitInTwo(total))}>{`Payer en 2 tranches (espèces + ${payMethods().find((m) => m.id === MOBILE())?.kind === 'mobile' ? 'mobile money' : methodLabel(MOBILE()).toLowerCase()})`}</Button>
         </div>

@@ -222,6 +222,7 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
         <div className="sm-cell"><span className="sm-label">Chiffre d’affaires</span><strong className="sm-value num">{fmtAr(k.revenue)}</strong><span className="sm-delta"><Delta cur={k.revenue} prev={kp.revenue} /></span></div>
         <div className="sm-cell"><span className="sm-label">Dépenses</span><strong className="sm-value num">{fmtAr(k.expenses)}</strong><span className="sm-delta"><Delta cur={k.expenses} prev={kp.expenses} invert /></span></div>
         <div className="sm-cell"><span className="sm-label">Reste <span className="muted">(CA − dépenses)</span></span><strong className={`sm-value num ${k.revenue - k.expenses < 0 ? 'neg' : ''}`}>{fmtAr(k.revenue - k.expenses)}</strong><span className="sm-delta"><Delta cur={k.revenue - k.expenses} prev={kp.revenue - kp.expenses} /></span></div>
+        {can('catalog.view') && <a className="sm-cell" href="#/stock/etat" style={{ textDecoration: 'none', color: 'inherit' }}><span className="sm-label">Stock restant</span><strong className="sm-value num">{fmtNum(stock.pieces)} <span className="sm-unit">pcs</span></strong><span className="sm-delta">{cost ? `valeur ${fmtAr(stock.value)} (coût)` : `valeur ${fmtAr(stock.retail)} (prix de vente)`}</span></a>}
         {cost && <div className="sm-cell sm-strong"><span className="sm-label">{k.net >= 0 ? 'Bénéfice net' : 'Perte nette'}</span><strong className="sm-value num">{fmtAr(k.net)}</strong><span className="sm-delta">après coût des articles ({fmtAr(k.cost)})</span></div>}
       </div>
     </section>
@@ -239,7 +240,7 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
           </div>
         ))}
       </div>
-      {byPage.length > 0 && <div className="card card-flush">
+      {byPage.length > 0 && moduleOn('pages') && <div className="card card-flush">
         <div className="card-pad"><h2>Chiffre d’affaires par page</h2></div>
         <div className="table-wrap"><table className="table"><thead><tr><th>Page</th><th className="t-num">CA</th><th className="t-num">Part</th><th className="t-num">Pièces</th><th className="t-num">Ventes</th>{cost && <th className="t-num">Bénéfice brut</th>}</tr></thead>
           <tbody>{byPage.map((g) => <tr key={g.key}><td><strong>{g.label}</strong><div className="bar-track mini"><span className="bar-fill" style={{ width: `${k.revenue ? Math.max(2, (g.revenue / k.revenue) * 100) : 0}%` }} /></div></td><td className="t-num">{fmtAr(g.revenue)}{msgs.get(g.key) ? <div className="small muted msg-hint">{fmtNum(msgs.get(g.key)!)} messages · {fmtAr(g.revenue / msgs.get(g.key)!)}/msg</div> : null}</td><td className="t-num">{pct(k.revenue ? g.revenue / k.revenue : 0)}</td><td className="t-num">{g.qty}</td><td className="t-num">{g.orders}</td>{cost && <td className="t-num">{fmtAr(g.gross)}</td>}</tr>)}</tbody>
@@ -354,7 +355,7 @@ function SituationCard({ from: f, to: t }: { from?: string; to?: string }) {
   return (
     <div className="card card-flush situation-card">
       <div className="card-pad stack-s">
-        <div className="row-between"><h2>{scope.strict ? 'Situation de mes pages' : 'Situation par page'}</h2>{!f && <PeriodPicker value={own} onChange={setOwn} />}</div>
+        <div className="row-between"><h2>{scope.strict ? 'Situation de mes pages' : moduleOn('pages') ? 'Situation par page' : 'Situation des ventes'}</h2>{!f && <PeriodPicker value={own} onChange={setOwn} />}</div>
         <div className="stat-grid sit-kpis">
           <div className="card stat"><span className="small muted">Total commandes</span><strong className="stat-value num">{fmtAr(T.gross)}</strong><span className="small muted">ventes + annulé + reporté</span></div>
           <a className="card stat" href="#/commandes/annulees" style={{ textDecoration: 'none', color: 'inherit' }}><span className="small muted">− Annulé</span><strong className="stat-value num">{fmtAr(T.cancelled)}</strong><span className="small muted">{T.cancelledN} commande(s)</span></a>
@@ -365,7 +366,7 @@ function SituationCard({ from: f, to: t }: { from?: string; to?: string }) {
         </div>
         <p className="small muted" style={{ margin: 0 }}>Total commandes − annulé − reporté = <strong>ventes</strong> ; ventes = {pms.map((m) => m.label).join(' + ')} + reste à payer. Une livraison reportée passe à sa nouvelle date ; un échange pris par le client compte dans les ventes, un échange non pris est retiré. Une commande avec des articles de plusieurs pages est répartie selon la valeur de chaque page.</p>
       </div>
-      {sit.rows.length === 0 ? <p className="card-pad small muted">Aucune activité sur cette période.</p> : (
+      {sit.rows.length === 0 ? <p className="card-pad small muted">Aucune activité sur cette période.</p> : !moduleOn('pages') && !scope.strict ? null : (
         <div className="table-wrap"><table className="table table-grid sit-table">
           <thead><tr><th>Page</th>{cols.map((c) => <th key={c.k} className="t-num">{c.l}</th>)}</tr></thead>
           <tbody>{sit.rows.map((r) => <tr key={r.id}><td><strong>{r.name}</strong></td>{cols.map((c) => cell(c, r))}</tr>)}</tbody>
@@ -458,7 +459,7 @@ function BestSellers() {
       <h2 className="dash-title">Meilleures ventes</h2>
       <div className="card stack-s">
         <div className="row-between" style={{ gap: 8 }}>
-          <Choice label="Voir" value={view} onChange={(v) => setView(v as typeof view)} options={[{ value: 'articles', label: 'Articles' }, { value: 'pages', label: 'Pages' }, { value: 'dernieres', label: 'Dernières commandes' }]} />
+          <Choice label="Voir" value={view} onChange={(v) => setView(v as typeof view)} options={[{ value: 'articles', label: 'Articles' }, ...(moduleOn('pages') ? [{ value: 'pages', label: 'Pages' }] : []), { value: 'dernieres', label: 'Dernières commandes' }]} />
           {view !== 'dernieres' && <Choice label="Trier par" value={sort} onChange={(v) => setSort(v as typeof sort)} options={[{ value: 'revenue', label: 'CA' }, { value: 'qty', label: 'Quantité' }, ...(cost ? [{ value: 'gross', label: 'Bénéfice' }] : [])]} />}
         </div>
         {view === 'dernieres' ? (last.length ? <ul className="list">{last.map((o) => <OrderRow key={o.id} o={o} />)}</ul> : <p className="small muted">Aucune commande.</p>)

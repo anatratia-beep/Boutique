@@ -457,7 +457,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
             <div className="row" style={{ gap: 6 }}>
               <button type="button" className="chip" onClick={() => setPrepay(String(Math.max(0, total - draft.deliveryFee)))}>Articles payés</button>
               {draft.deliveryFee > 0 && <button type="button" className="chip" onClick={() => setPrepay(String(Math.max(0, total)))}>Tout payé (articles + frais)</button>}
-              {total > 0 && <button type="button" className="chip" onClick={() => setPays(splitInTwo(Math.max(0, total)).map((l) => ({ amount: l.amount, method: l.method, ref: '' })))}>En 2 tranches (espèces + mobile money)</button>}
+              {total > 0 && firstNonCash() !== 'cash' && <button type="button" className="chip" onClick={() => setPays(splitInTwo(Math.max(0, total)).map((l) => ({ amount: l.amount, method: l.method, ref: '' })))}>En 2 tranches (espèces + mobile money)</button>}
               {prepaid > 0 && <button type="button" className="chip" onClick={() => setPays([{ amount: '', method: firstNonCash(), ref: '' }])}>Rien payé</button>}
             </div>
             {pays.map((x, i) => (
