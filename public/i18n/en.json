@@ -4421,4 +4421,5 @@
 "Désactivée":"Off",
 "{0} : activée":"{0}: enabled",
 "{0} : désactivée":"{0}: disabled",
-"Indiquez le taux du RMB (combien de {0} pour 1 ¥).":"Enter the RMB rate (how many {0} for 1 ¥)."}
+"Indiquez le taux du RMB (combien de {0} pour 1 ¥).":"Enter the RMB rate (how many {0} for 1 ¥).",
+"code appareil":"device code"}

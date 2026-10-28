@@ -9,6 +9,7 @@ import { connectCloud } from '../lib/sync';
 import { Button, PasswordField, Req, SelectField, TextField, toast } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { CLOUD_ENABLED } from '../lib/license';
+import { tr } from '../lib/i18n';
 
 export function BrandLogo({ size }: { size?: number }) {
   const c = useCompany();
@@ -23,7 +24,8 @@ export function BrandLogo({ size }: { size?: number }) {
 export function AuthShell({ children }: { children: ReactNode }) {
   const c = useCompany();
   const h = new Date().getHours();
-  const moment = h < 12 ? 'Bonne matinée' : h < 18 ? 'Bon après-midi' : 'Bonne soirée';
+  // Traduit avant de couper en deux lignes (sinon « Bonne » et « matinée » ne sont pas reconnus).
+  const moment = tr(h < 12 ? 'Bonne matinée' : h < 18 ? 'Bon après-midi' : 'Bonne soirée');
   return (
     <div className="login">
       <div className="login-stage">

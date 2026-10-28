@@ -9,10 +9,10 @@ export interface LangDef { id: Lang; label: string; locale: string; rtl?: boolea
 export const LANGS: LangDef[] = [
   { id: 'fr', label: 'Français', locale: 'fr-FR' },
   { id: 'en', label: 'English', locale: 'en-GB' },
-  { id: 'es', label: 'Español', locale: 'es-ES', soon: true },
-  { id: 'pt', label: 'Português', locale: 'pt-PT', soon: true },
-  { id: 'ar', label: 'العربية', locale: 'ar-u-nu-latn', rtl: true, soon: true },
-  { id: 'mg', label: 'Malagasy', locale: 'mg-MG', soon: true },
+  { id: 'es', label: 'Español', locale: 'es-ES' },
+  { id: 'pt', label: 'Português', locale: 'pt-PT' },
+  { id: 'ar', label: 'العربية', locale: 'ar-u-nu-latn', rtl: true },
+  { id: 'mg', label: 'Malagasy', locale: 'mg-MG' },
 ];
 const KEY = 'boutique.lang';
 let lang: Lang = 'fr';
