@@ -42,7 +42,7 @@ import { HandoversPage } from './pages/Handovers';
 import { CategoriesPage } from './pages/Categories';
 import { MyDeliveriesPage } from './pages/MyDeliveries';
 import { ExpensesPage } from './pages/Expenses';
-import { NotifBar, NotifBell, NotificationsPage, useNotifCount } from './ui/notifications';
+import { NotifBar, NotifBell, NotificationsPage, SystemNotifier, useNotifCount } from './ui/notifications';
 import { loc } from './lib/i18n';
 import { moduleOn, type ModuleKey } from './lib/modules';
 function NavNotifCount() { const n = useNotifCount(); return n ? <span className="nav-count">{n}</span> : null; }
@@ -214,7 +214,7 @@ function Shell() {
           <SyncPill />
         </header>
         <main className="main">
-          <div className="content"><UpdatedBanner /><WorkDateBanner /><NotifBar /><BackBar items={items} />{current.page()}</div>
+          <div className="content"><SystemNotifier /><UpdatedBanner /><WorkDateBanner /><NotifBar /><BackBar items={items} />{current.page()}</div>
         </main>
         <nav className="bottom-nav" aria-label="Raccourcis">
           {mobileItems.map((i) => (

@@ -8,7 +8,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); i
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 const U = 'http://127.0.0.1:5173/'; // hors « localhost » : réglages par défaut d'un vrai client
 await p.goto(U); await p.waitForTimeout(1500); await p.screenshot({ path: '/tmp/claude-0/t/start.png' }); const skip = p.getByRole('button', { name: 'Continuer dans le navigateur' }); if (await skip.isVisible().catch(() => false)) { await skip.click(); await p.waitForTimeout(800); }
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(800);
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(800);
 // premier mot de passe
 const pw = p.locator('input[type=password]'); if (await pw.count() > 1) { for (let i = 0; i < await pw.count(); i++) await pw.nth(i).fill('Boutique2026!x'); const txt = p.locator('input:not([type=password])'); for (let i = 0; i < await txt.count(); i++) { if (await txt.nth(i).isVisible() && !(await txt.nth(i).inputValue())) await txt.nth(i).fill('Tana'); } await p.locator('button[type=submit]').first().click(); await p.waitForTimeout(1500); }
 const later = p.getByRole('button', { name: 'Plus tard' }); if (await later.isVisible().catch(() => false)) await later.click();

@@ -12,7 +12,7 @@ p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 const dir = '/tmp/claude-0/t'; mkdirSync(dir, { recursive: true });
 writeFileSync(`${dir}/logo-page.png`, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDK+mmyAAAAABJRU5ErkJggg==', 'base64'));
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await p.evaluate(async () => {
   const t = window.__tsena; const now = new Date().toISOString();

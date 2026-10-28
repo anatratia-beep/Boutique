@@ -7,7 +7,7 @@ const p = await (await b.newContext({ viewport: { width: W, height: 900 }, timez
 const N = (t) => t.replace(/[\s  ]+/g, ' ');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
-const login = async (u) => { await p.getByLabel("Nom d'utilisateur").fill(u); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(700); await p.getByRole('button', { name: 'Plus tard' }).click({ timeout: 1500 }).catch(() => {}); };
+const login = async (u) => { await p.getByLabel("Nom d'utilisateur").fill(u); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(700); await p.getByRole('button', { name: 'Plus tard' }).click({ timeout: 1500 }).catch(() => {}); };
 const logout = async () => { await p.goto('http://localhost:5173/#/compte'); await p.waitForTimeout(400); await p.locator('main').getByRole('button', { name: 'Se déconnecter' }).click(); await p.waitForTimeout(400); };
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
 await login('super-adm');

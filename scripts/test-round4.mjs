@@ -55,7 +55,7 @@ await p.route('https://mock.supabase.co/**', async (route) => {
 });
 
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 const today = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
 const addDays = (s, n) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -118,14 +118,14 @@ ok(await p.locator('.notif-bar').getByRole('button', { name: 'voir moins' }).cou
 ok(await p.locator('nav, .sidebar').getByText('Notifications').count() > 0 || W < 700, 'menu « Notifications »');
 await p.goto('http://localhost:5173/#/notifications'); await p.waitForTimeout(600);
 tx = N(await p.locator('main').innerText());
-ok(tx.includes('Notifications') && tx.includes('Stock') && tx.includes('à vérifier'), 'page Notifications : toutes les notifications');
+ok(tx.includes('Notifications') && tx.includes('Stock') && !tx.includes('à vérifier'), 'page Notifications : toutes les notifications (plus d’alerte « actions à vérifier »)');
 const stockItem = p.locator('.notif', { hasText: 'Stock' }).first();
 await stockItem.getByRole('button', { name: 'Ne plus afficher' }).click(); await p.waitForTimeout(400);
 ok(!N(await p.locator('main').innerText()).includes('en rupture'), 'notification de stock masquée');
 await p.evaluate(async () => { await window.__tsena.save('stockMoves', { variantId: 'v2', qty: -10, type: 'adjust', at: new Date().toISOString() }); });
 await p.waitForTimeout(500);
 ok(N(await p.locator('main').innerText()).includes('2 en rupture'), 'nouveau problème (2e rupture) : la notification revient');
-const audItem = p.locator('.notif', { hasText: 'à vérifier' }).first();
+const audItem = p.locator('.notif', { hasText: '2 en rupture' }).first();
 await audItem.getByRole('button', { name: 'Plus tard' }).click(); await audItem.getByRole('button', { name: 'Dans 3 h' }).click(); await p.waitForTimeout(400);
 tx = N(await p.locator('main').innerText());
 ok(tx.includes('Reportées') && tx.includes('Reportée — revient'), 'notification reportée de 3 h');

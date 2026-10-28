@@ -6,7 +6,7 @@ const N = (t) => t.replace(/[  ]/g, ' ');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 const T = await p.evaluate(async () => { const t = window.__tsena; const pad = (n) => String(n).padStart(2, '0'); const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const d0 = new Date(); const d1 = new Date(Date.now() - 864e5); const d2 = new Date(Date.now() - 2 * 864e5); const today = ymd(d0), y1 = ymd(d1), y2 = ymd(d2);

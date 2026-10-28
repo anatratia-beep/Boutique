@@ -5,7 +5,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); i
 const p = await (await b.newContext({ viewport: { width: W, height: 900 }, timezoneId: 'Indian/Antananarivo' })).newPage();
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 const N = (t) => t.replace(/[  ]/g, ' ');
-const login = async (u) => { await p.goto('http://localhost:5173/'); await p.waitForTimeout(600); await p.getByLabel("Nom d'utilisateur").fill(u); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(500); const later = p.getByRole('button', { name: 'Plus tard' }); if (await later.count()) await later.click(); await p.waitForTimeout(400); };
+const login = async (u) => { await p.goto('http://localhost:5173/'); await p.waitForTimeout(600); await p.getByLabel("Nom d'utilisateur").fill(u); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(500); const later = p.getByRole('button', { name: 'Plus tard' }); if (await later.count()) await later.click(); await p.waitForTimeout(400); };
 await login('super-adm');
 await p.evaluate(async () => { const t = window.__tsena; const at = new Date().toISOString();
   const sa = t.all('users').find((u) => u.username === 'super-adm');

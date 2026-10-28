@@ -3,7 +3,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
 const p = await (await b.newContext({ viewport: { width: 1430, height: 860 } })).newPage();
 p.on('pageerror', (e) => console.log('ERR', e.message));
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await p.evaluate(async () => { const t = window.__tsena;
   const names = ['ANTIVOL', 'BOXER ET SLIP ENFANT', 'BOXER HOMME', 'CASQUE BLUETOOTH', 'COFFRET CADEAU', 'LAMPE RECHARGEABLE', 'POIGNET PRECIEUX', 'PYJAMAS ENFANT', 'PYJAMAS FEMME', 'PYJAMAS HOMME', 'SANDALE'];

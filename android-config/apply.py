@@ -15,3 +15,11 @@ for root, _, files in os.walk(res):
             bg = Image.new('RGB', (w, h), (239, 235, 248)); s = int(min(w, h) * 0.28)
             ic = icon.resize((s, s), Image.LANCZOS); bg.paste(ic, ((w - s) // 2, (h - s) // 2), ic); bg.save(p)
 print('icônes et écran de démarrage appliqués')
+
+# Notifications (Android 13+ : autorisation POST_NOTIFICATIONS demandée à l'utilisateur).
+man = os.path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml')
+m = open(man, encoding='utf-8').read()
+if 'POST_NOTIFICATIONS' not in m:
+    m = m.replace('</manifest>', '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n</manifest>')
+    open(man, 'w', encoding='utf-8').write(m)
+print('autorisation des notifications ajoutée')

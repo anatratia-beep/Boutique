@@ -13,7 +13,7 @@ for (const W of widths) {
   const p = await ctx.newPage();
   p.on('pageerror', (e) => issues.push(`${W} ERR ${e.message}`));
   await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-  await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+  await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
   await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(300);
   if (W === widths[0]) await p.evaluate(async () => { const t = window.__tsena; const now = new Date().toISOString();
     await t.save('categories', [{ id: 'c1', name: 'Pyjama enfant avec un nom de page assez long' }, { id: 'c2', name: 'Lampes moto' }]);

@@ -6,7 +6,7 @@ const p = await ctx.newPage();
 p.on('pageerror', (e) => console.log('ERR', e.message));
 await p.clock.setFixedTime(new Date('2026-10-17T18:10:00'));
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 const T = (fn, a) => p.evaluate(fn, a);
 await T(async () => { const t = window.__tsena;

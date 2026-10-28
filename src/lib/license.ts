@@ -250,6 +250,13 @@ export async function licenseHeartbeat(): Promise<'ok' | 'revoked' | 'skip'> {
 }
 
 /** Nombre de comptes actifs autorisés (0 = illimité). */
-export const userLimit = () => (current?.version === 2 ? current.users : 0);
+/** Licence 1 appareil : un seul compte (le super-admin), pas de création d'utilisateurs.
+ *  Sur l'ordinateur de développement, seulement si le test le demande (localStorage boutique.oneDevice). */
+export const singleUser = () => {
+  if (current?.version !== 1) return false;
+  if (typeof location !== 'undefined' && location.hostname === 'localhost') { try { return localStorage.getItem('boutique.oneDevice') === '1'; } catch { return false; } }
+  return true;
+};
+export const userLimit = () => (current?.version === 2 ? current.users : singleUser() ? 1 : 0);
 
 export const frDate = (iso: string) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString(loc(), { day: 'numeric', month: 'long', year: 'numeric' }) : '');

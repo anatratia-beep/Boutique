@@ -2,7 +2,7 @@
 import { DEFAULT_ROLES, PERMISSIONS } from './permissions';
 import { all, get, getRaw, dumpAll, getMeta, outboxCount, restoreAll, save, setMeta, TABLES, type BaseRecord } from './db';
 import { decryptText, encryptText, hashSecret, verifySecret } from './crypto';
-import { audit, currentUser, SUPERADMIN_ID, type User } from './auth';
+import { audit, currentUser, DEFAULT_PASSWORD, SUPERADMIN_ID, type User } from './auth';
 import { getCloud, syncNow, syncStatus } from './sync';
 import { restoreDefaultZones } from './orders';
 import { restoreDefaultFinance } from './money';
@@ -266,7 +266,7 @@ export async function factoryReset() {
   await restoreDefaultFinance();
   await save('users', {
     id: SUPERADMIN_ID, username: 'super-adm', fullName: 'Super-admin', roleId: 'role-superadmin', active: true,
-    passwordHash: await hashSecret('anosy'), mustChangePassword: true, secretQuestion: undefined, secretAnswerHash: undefined, email: undefined, deleted: false,
+    passwordHash: await hashSecret(DEFAULT_PASSWORD), mustChangePassword: true, secretQuestion: undefined, secretAnswerHash: undefined, email: undefined, deleted: false,
   } as Partial<User>);
   await audit('Remise à zéro', "Logiciel remis à l'état d'origine");
   await syncNow();

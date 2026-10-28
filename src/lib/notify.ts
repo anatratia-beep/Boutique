@@ -16,7 +16,7 @@ import { reportsDue } from '../pages/BossReport';
 import { currentUser } from './auth';
 import { fmtAr } from './catalog';
 import { allPages, boostDues, boostOwners, deadlineText, pageName } from './boosts';
-import { loc, tr } from './i18n';
+import { loc } from './i18n';
 import { moduleOn } from './modules';
 
 export type Level = 'urgent' | 'important' | 'info';
@@ -122,11 +122,7 @@ export function useNotifications() {
         if (late.length) out.push({ id: `boost-team:${late.map((d) => d.pageId + d.date).join(',')}`, level: 'urgent', title: `Compte boost pas fait à l’heure : ${late.length} page(s)`, text: late.slice(0, 4).map((d) => `${pageName(d.pageId)} — ${boostOwners(d.pageId).map((u) => u.fullName).join(', ') || 'personne désignée'}`).join(' · '), href: '#/boosts/suivi' });
       }
     }
-    if (can('records.correct')) {
-      // Actions importantes (annulation, correction, suppression, restauration…) à vérifier par le super-admin / gérant.
-      const todo = auditRows.filter((r) => r.review === 'todo').sort((a, b) => b.at.localeCompare(a.at));
-      if (todo.length) out.push({ id: `audit:${todo[0].id}`, level: 'urgent', title: `${todo.length} action(s) importante(s) à vérifier`, text: todo.slice(0, 3).map((r) => `${tr(r.action)} (${r.userName}, ${new Date(r.at).toLocaleString(loc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})`).join(' · '), href: '#/journal' });
-    }
+    // Les actions importantes (modifications, corrections…) restent dans le Journal d'activité, sans notification.
     if (can('users.manage')) {
       const open = conflicts.filter((c) => !c.resolved).length;
       if (open) out.push({ id: 'conflits', level: 'important', title: `${open} conflit(s) de synchronisation à vérifier`, href: '#/parametres/cloud' });

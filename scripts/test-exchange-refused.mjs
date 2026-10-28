@@ -4,7 +4,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); i
 const p = await (await b.newContext({ viewport: { width: 390, height: 860 } })).newPage();
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(300);
 await p.evaluate(async () => { const t = window.__tsena; const at = new Date().toISOString();
   await t.save('products', [{ id: 'p1', code: 'S', name: 'Sandale', priceRetail: 25000, active: true }]);

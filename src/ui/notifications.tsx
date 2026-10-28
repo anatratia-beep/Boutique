@@ -7,7 +7,8 @@ import { useMeta } from '../lib/db';
 import { PayDue } from '../pages/Expenses';
 import { Button, IconButton, PageHead } from './kit';
 import { Icon } from './icons';
-import { loc } from '../lib/i18n';
+import { loc, tr } from '../lib/i18n';
+import { askSysNotif, pushSysNotifs, sysNotifAllowed, sysNotifSupported } from '../lib/sysNotify';
 
 function useTick() { const [, set] = useState(0); useEffect(() => { const t = setInterval(() => set((x) => x + 1), 60_000); return () => clearInterval(t); }, []); }
 
@@ -58,6 +59,23 @@ function Item({ n, onPay, full }: { n: Notif & { until?: string }; onPay: (n: No
       </div>
     </div>
   );
+}
+
+/** Notifications « système » : chaque nouvelle notification part aussi dans la barre du téléphone / de l'ordinateur.
+ *  L'autorisation est demandée au premier toucher (les navigateurs l'exigent), une seule fois. */
+export function SystemNotifier() {
+  useTick();
+  const list = useNotifications().filter((n) => !n.until && !hiddenNotifs()[`${n.id}|${n.title}`]);
+  const asked = useMeta<boolean>('sysNotifAsked', false);
+  useEffect(() => {
+    if (asked || !sysNotifSupported()) return;
+    const ask = async () => { document.removeEventListener('click', ask, true); if (!(await sysNotifAllowed())) await askSysNotif(); const { setMeta } = await import('../lib/db'); await setMeta('sysNotifAsked', true); };
+    document.addEventListener('click', ask, true);
+    return () => document.removeEventListener('click', ask, true);
+  }, [asked]);
+  const key = list.map((n) => `${n.id}|${n.title}`).join('\n');
+  useEffect(() => { void pushSysNotifs(list.map((n) => ({ id: n.id, title: tr(n.title), text: n.text ? tr(n.text) : undefined, href: n.href }))); }, [key]);
+  return null;
 }
 
 /** Bandeau : au plus 3 notifications non reportées. */

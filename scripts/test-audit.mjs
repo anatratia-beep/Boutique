@@ -7,7 +7,7 @@ const N = (t) => t.replace(/[  ]/g, ' ');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await p.evaluate(async () => {
   const t = window.__tsena; const now = new Date().toISOString();
@@ -24,7 +24,7 @@ await p.getByRole('dialog').getByRole('button', { name: 'Annuler la vente' }).cl
 const a = await p.evaluate(() => window.__tsena.all('audit').find((r) => r.action === 'Vente annulée'));
 ok(a && a.level === 'high' && a.review === 'todo' && a.role, 'annulation : action « Important », à vérifier, rôle noté');
 await p.goto('http://localhost:5173/#/'); await p.waitForTimeout(600);
-ok(N(await p.locator('body').innerText()).includes('action(s) importante(s) à vérifier'), 'alerte au super-admin / gérant');
+ok(!N(await p.locator('body').innerText()).includes('action(s) importante(s) à vérifier'), 'plus de notification pour les modifications (elles restent dans le Journal)');
 await p.goto('http://localhost:5173/#/journal'); await p.waitForTimeout(500);
 let tx = N(await p.locator('main').innerText());
 ok(tx.includes('Important') && tx.includes('Vente annulée') && /\d{2}:\d{2}/.test(tx), 'journal : importance, action, date et heure');

@@ -8,7 +8,7 @@ const d = new Date(); const ymd = `${d.getFullYear()}-${String(d.getMonth()+1).p
 await p.clock.setFixedTime(new Date(`${ymd}T18:10:00`));
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
 await p.getByLabel("Nom d'utilisateur").fill('super-adm');
-await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(500);
 const T = (fn, a) => p.evaluate(fn, a);
 await T(async () => {
@@ -23,7 +23,7 @@ await T(async () => {
 });
 await p.locator('button', { hasText: 'Se déconnecter' }).first().click(); await p.waitForTimeout(500);
 await p.getByLabel("Nom d'utilisateur").fill('hery');
-await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
 const later = p.getByRole('button', { name: 'Plus tard' }); if (await later.count()) await later.click();
 await p.goto('http://localhost:5173/#/'); await p.waitForTimeout(500);
 ok(await p.locator('.evening-recap').count() === 1, 'vendeur, 18 h : bandeau « récap du soir » sur l’accueil');

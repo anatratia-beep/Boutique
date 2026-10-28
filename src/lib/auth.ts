@@ -48,6 +48,9 @@ export const SECRET_QUESTIONS = [
   'Quelle était la marque de votre premier téléphone ?',
 ];
 
+/** Mot de passe de départ du compte super-adm (à changer à la première connexion). */
+export const DEFAULT_PASSWORD = 'adm1234';
+
 /** Crée le super-admin et les rôles de départ s'ils n'existent pas encore sur cet appareil. */
 export async function seedAccounts() {
   const roles = DEFAULT_ROLES.map((r) => ({
@@ -58,10 +61,13 @@ export async function seedAccounts() {
     tbl: 'users', id: SUPERADMIN_ID,
     data: {
       id: SUPERADMIN_ID, username: 'super-adm', fullName: 'Super-admin', roleId: SUPERADMIN_ROLE, active: true,
-      passwordHash: await hashSecret('anosy'), mustChangePassword: true, createdAt: SEED_TIME, updatedAt: SEED_TIME,
+      passwordHash: await hashSecret(DEFAULT_PASSWORD), mustChangePassword: true, createdAt: SEED_TIME, updatedAt: SEED_TIME,
     } as BaseRecord,
   };
   await applyRemote([...roles, superAdmin]);
+  // Ancien mot de passe de départ (« anosy ») jamais changé : remplacé par le nouveau mot de passe par défaut.
+  const sa = get<User>('users', SUPERADMIN_ID);
+  if (sa?.mustChangePassword && (await verifySecret('anosy', sa.passwordHash))) await save('users', { id: SUPERADMIN_ID, passwordHash: await hashSecret(DEFAULT_PASSWORD) });
 
   // Nouveaux droits ajoutés par une mise à jour : on les donne aux rôles de départ qui doivent les avoir.
   const keys = PERMISSIONS.map((p) => p.key);
@@ -200,7 +206,7 @@ export async function logout() {
 export function checkPasswordStrength(pwd: string): string | null {
   if (pwd.length < 6) return 'Au moins 6 caractères.';
   if (!/[0-9]/.test(pwd) || !/[a-zA-Z]/.test(pwd)) return 'Mélangez lettres et chiffres.';
-  if (['anosy', '123456', 'azerty', 'password', 'motdepasse'].includes(pwd.toLowerCase())) return 'Ce mot de passe est trop connu.';
+  if (['anosy', 'adm1234', '123456', 'azerty', 'password', 'motdepasse'].includes(pwd.toLowerCase())) return 'Ce mot de passe est trop connu.';
   return null;
 }
 

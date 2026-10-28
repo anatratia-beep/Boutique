@@ -7,7 +7,7 @@ const N = (t) => t.replace(/[  ]/g, ' ');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await p.evaluate(async () => {
   const t = window.__tsena; const now = new Date().toISOString(); const hash = t.get('users', 'user-superadmin').passwordHash;
@@ -58,6 +58,6 @@ const sw = await p.evaluate(() => document.documentElement.scrollWidth); ok(sw <
 // Connexion refusée
 await p.goto('http://localhost:5173/#/compte'); await p.waitForTimeout(300);
 await p.locator('main').getByRole('button', { name: 'Se déconnecter' }).click(); await p.waitForTimeout(400);
-await p.getByLabel("Nom d'utilisateur").fill('aina'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+await p.getByLabel("Nom d'utilisateur").fill('aina'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
 ok(N(await p.locator('body').innerText()).includes('incorrect'), 'le vendeur supprimé ne peut plus se connecter');
 console.log(fail ? `${fail} ÉCHEC(S)` : 'TOUT EST BON'); await b.close();

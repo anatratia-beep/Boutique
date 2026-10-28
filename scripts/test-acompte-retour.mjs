@@ -6,7 +6,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); i
 p.on('pageerror', (e) => console.log('ERR', e.message));
 const T = (fn, a) => p.evaluate(fn, a);
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 
 

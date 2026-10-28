@@ -6,7 +6,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); i
 p.on('pageerror', (e) => console.log('ERR', e.message));
 const T = (fn, a) => p.evaluate(fn, a);
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await T(async () => { const t = window.__tsena; const now = new Date().toISOString();
   await t.save('categories', { id: 'c1', name: 'Pyjama' });
@@ -22,7 +22,7 @@ await T(async () => { const t = window.__tsena; const now = new Date().toISOStri
 await T(async () => { const t = window.__tsena; const sa = t.get('users', 'super-adm') || t.all('users')[0];
   await t.save('users', { id: 'u-hery', username: 'hery', fullName: 'Hery', roleId: 'role-seller', passwordHash: sa.passwordHash, salt: sa.salt, active: true }); });
 const login = async (u) => { await p.goto('http://localhost:5173/#/compte'); await p.waitForTimeout(300); await p.locator('button', { hasText: 'Se déconnecter' }).first().click(); await p.waitForTimeout(400);
-  await p.getByLabel("Nom d'utilisateur").fill(u); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+  await p.getByLabel("Nom d'utilisateur").fill(u); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
   const l = p.getByRole('button', { name: 'Plus tard' }); if (await l.count()) await l.click(); };
 await login('hery');
 await p.goto('http://localhost:5173/#/commandes/o1'); await p.waitForTimeout(500);

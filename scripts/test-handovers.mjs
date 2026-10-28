@@ -8,7 +8,7 @@ const N = (t) => t.replace(/[\u00a0\u202f]/g, ' ');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 const roles = await p.evaluate(() => ({ seller: window.__tsena.get('roles', 'role-seller'), manager: window.__tsena.get('roles', 'role-manager') }));
 ok(roles.manager?.name === 'Responsable' && roles.manager.permissions.includes('orders.dispatch') && roles.manager.permissions.includes('handover.receive'), 'rôle Responsable : assigne les livreurs et reçoit les versements');
@@ -62,7 +62,7 @@ let sw = await p.evaluate(() => document.documentElement.scrollWidth); ok(sw <= 
 await p.goto('http://localhost:5173/#/compte'); await p.waitForTimeout(400);
 await p.locator('main').getByRole('button', { name: 'Se déconnecter' }).click();
 await p.waitForTimeout(400);
-await p.getByLabel("Nom d'utilisateur").fill('aina'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter'); await p.waitForTimeout(600);
+await p.getByLabel("Nom d'utilisateur").fill('aina'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter'); await p.waitForTimeout(600);
 await p.goto('http://localhost:5173/#/versements'); await p.waitForTimeout(600);
 tx = N(await p.locator('main').innerText());
 ok(tx.includes('Ma feuille du jour') && tx.includes('TOTAL À PAYER') && tx.includes('43 000 Ar') && tx.includes('Reçu') && !tx.includes('Bako'), 'le vendeur voit seulement sa feuille et le montant reçu');

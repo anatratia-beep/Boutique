@@ -6,7 +6,7 @@ const N = (t) => t.replace(/[  ]/g, ' ');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 p.on('pageerror', (e) => { console.log('ERR', e.message); fail++; });
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await p.evaluate(async () => { await window.__tsena.save('categories', { id: 'sand', name: 'Sandale', code: 'SAND', attrs: [
   { id: 'm', name: 'Modèle', required: true, active: true, values: [] }, { id: 'c', name: 'Couleur', required: true, active: true, values: [] },

@@ -87,6 +87,8 @@ function createWindow() {
 }
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+// Windows : sans cet identifiant, les notifications du logiciel ne s'affichent pas.
+if (process.platform === 'win32') app.setAppUserModelId('mg.anatratia.boutique');
 app.whenReady().then(() => {
   chooseActive();
   protocol.handle('app', (req) => {

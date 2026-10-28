@@ -2,7 +2,7 @@
 import { useModule } from '../lib/modules';
 import { useMemo, useState } from 'react';
 import { roundMoney } from '../lib/currency';
-import { userLimit } from '../lib/license';
+import { singleUser, userLimit } from '../lib/license';
 import { audit, normUsername, removeUser, roleOf, setPassword, SUPERADMIN_ID, useCurrentUser, type Role, type User, useMe } from '../lib/auth';
 import { hashSecret } from '../lib/crypto';
 import { save, useTable } from '../lib/db';
@@ -48,7 +48,8 @@ export function UsersPage() {
   return (
     <>
       <PageHead title="Utilisateurs" subtitle={`${users.filter((u) => u.active).length} comptes actifs`}
-        actions={<Button icon="plus" onClick={() => setEditing('new')}>Ajouter un utilisateur</Button>} />
+        actions={!singleUser() && <Button icon="plus" onClick={() => setEditing('new')}>Ajouter un utilisateur</Button>} />
+      {singleUser() && <div className="notice"><Icon name="users" /><span>Votre licence « 1 appareil » comprend un seul compte : le vôtre. Pour créer des comptes pour vos vendeurs ou livreurs, demandez une licence multi-appareils au vendeur.</span></div>}
       <div className="row">
         <div className="field" style={{ flex: '1 1 220px' }}>
           <label htmlFor="user-search" className="sr-only">Rechercher</label>

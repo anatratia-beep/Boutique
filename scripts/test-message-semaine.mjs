@@ -4,7 +4,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); i
 const p = await (await b.newContext({ viewport: { width: 1430, height: 900 } })).newPage();
 p.on('pageerror', (e) => console.log('ERR', e.message));
 await p.goto('http://localhost:5173/'); await p.waitForTimeout(600);
-await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('anosy'); await p.keyboard.press('Enter');
+await p.getByLabel("Nom d'utilisateur").fill('super-adm'); await p.locator('input[type=password]').fill('adm1234'); await p.keyboard.press('Enter');
 await p.getByRole('button', { name: 'Plus tard' }).click(); await p.waitForTimeout(400);
 await p.evaluate(async () => { const t = window.__tsena; const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - 7); mon.setHours(10);
   await t.save('categories', { id: 'c1', name: 'LAMPE' }); await t.save('products', { id: 'p1', code: 'L', name: 'Lampe', categoryId: 'c1', priceRetail: 50000, active: true }); await t.save('variants', { id: 'v1', productId: 'p1', sku: 'L', costAvg: 20000 });
