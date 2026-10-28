@@ -118,7 +118,7 @@ export async function voidPurchase(p: Purchase, reason: string) {
   for (const r of recs) await cancelReception(r, `${p.number} annulée : ${reason}`);
   const fresh = get<Purchase>('purchases', p.id)!;
   await save('purchases', { id: p.id, status: 'cancelled', statusDates: { ...(fresh.statusDates || {}), cancelled: new Date().toISOString().slice(0, 10) }, notes: [fresh.notes, `Annulée : ${reason}`].filter(Boolean).join('\n') });
-  await audit('Commande Chine annulée', `${p.number} — ${reason}${recs.length ? ` : ${recs.length} réception(s) annulée(s), stock retiré` : ''}`, 'purchases', p.id);
+  await audit('Achat annulé', `${p.number} — ${reason}${recs.length ? ` : ${recs.length} réception(s) annulée(s), stock retiré` : ''}`, 'purchases', p.id);
 }
 
 /** Annule un mouvement de stock saisi à la main (ajustement, inventaire, stock initial) : mouvement inverse. */

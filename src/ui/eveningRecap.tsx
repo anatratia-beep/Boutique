@@ -7,6 +7,7 @@ import { useCan } from '../lib/auth';
 import { today } from '../lib/money';
 import { Icon } from './icons';
 import { loc } from '../lib/i18n';
+import { useModule } from '../lib/modules';
 
 export const RECAP_HREF = '#/caisse-du-jour/envoyer';
 export const EVENING_HOUR = 16;
@@ -43,7 +44,7 @@ export function useEveningRecap() {
   useTable('audit');
   const hour = useHour();
   const sent = recapSent(today());
-  const allowed = can('cashday.use');
+  const allowed = can('cashday.use') && useModule('eveningRecap');
   return { allowed, sent, due: allowed && !sent && hour >= EVENING_HOUR };
 }
 

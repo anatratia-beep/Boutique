@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { fmtMoney, parseMoney } from './currency';
 import { all, get, getMeta, newId, nowIso, save, useTable, type BaseRecord , bizNow, workDate } from './db';
 import { audit, currentUser } from './auth';
-import { loc, getLang } from './i18n';
+import { loc, commaThousands } from './i18n';
 
 /** Valeur d'une variante de catégorie (ex. « B22 (baïonnette) », code court « B22 »). */
 export interface AttrValue { id: string; label: string; code: string; active?: boolean }
@@ -80,7 +80,7 @@ export const parseNum = (s: string | number | null | undefined): number | undefi
   if (typeof s === 'number') return isNaN(s) ? undefined : s;
   // En anglais la virgule sépare les milliers (« 1,234.5 ») ; en français c'est le séparateur décimal (« 1 234,5 »).
   const raw = s.replace(/[\s\u00a0\u202f]/g, '');
-  const t = getLang() === 'en' ? raw.replace(/,/g, '') : raw.replace(',', '.');
+  const t = commaThousands() ? raw.replace(/,/g, '') : raw.replace(',', '.');
   if (t === '') return undefined;
   const n = Number(t);
   return isNaN(n) ? undefined : n;
@@ -147,8 +147,8 @@ export interface Purchase extends BaseRecord {
 export type PurchaseStatus = 'ordered' | 'shipped' | 'arrived' | 'partial' | 'received' | 'cancelled';
 export const PURCHASE_STATUS: Record<PurchaseStatus, { label: string; tone: 'neutral' | 'brand' | 'warn' | 'ok' | 'danger' }> = {
   ordered: { label: 'Commandée', tone: 'neutral' },
-  shipped: { label: 'Expédiée de Chine', tone: 'brand' },
-  arrived: { label: 'Arrivée à Madagascar', tone: 'warn' },
+  shipped: { label: 'Expédiée', tone: 'brand' },
+  arrived: { label: 'Arrivée', tone: 'warn' },
   partial: { label: 'Reçue en partie', tone: 'warn' },
   received: { label: 'Reçue', tone: 'ok' },
   cancelled: { label: 'Annulée', tone: 'danger' },

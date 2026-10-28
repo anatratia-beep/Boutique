@@ -17,6 +17,7 @@ import { currentUser } from './auth';
 import { fmtAr } from './catalog';
 import { allPages, boostDues, boostOwners, deadlineText, pageName } from './boosts';
 import { loc } from './i18n';
+import { moduleOn } from './modules';
 
 export type Level = 'urgent' | 'important' | 'info';
 export const SNOOZE_H: Record<Level, number> = { urgent: 1, important: 2, info: 5 };
@@ -56,7 +57,7 @@ export const hiddenNotifs = () => getMeta<Hidden>('notifHidden', {});
 export function useNotifications() {
   const can = useCan();
   const orders = useTable<Order>('orders'); const moves = useTable('cashMoves'); const recs = useTable<Recurring>('recurring');
-  const products = useTable<Product>('products'); const sm = useTable('stockMoves'); const conflicts = useTable<any>('syncConflicts'); const payouts = useTable('payouts'); const prospects = useTable('prospects'); const couriers = useTable<Courier>('couriers'); const settles = useTable('courierSettlements'); const auditRows = useTable<any>('audit'); const readings = useTable('boostReadings'); const boostsT = useTable('boosts');
+  const products = useTable<Product>('products'); const sm = useTable('stockMoves'); const conflicts = useTable<any>('syncConflicts'); const payouts = useTable('payouts'); const prospects = useTable('prospects'); const couriers = useTable<Courier>('couriers'); const settles = useTable('courierSettlements'); const auditRows = useTable<any>('audit'); const readings = useTable('boostReadings'); const boostsT = useTable('boosts'); const settings = useTable('settings');
   const snoozes = useMeta<Snoozes>('notifSnooze', {});
   const hidden = useMeta<Hidden>('notifHidden', {});
   const reportSent = useMeta<Record<string, string>>('reportSent', {});
@@ -74,7 +75,7 @@ export function useNotifications() {
         out.push({ id: `due:${rid}:${d.period}`, level: 'urgent', title: `${d.r.label} ${d.r.kind === 'income' ? 'à encaisser' : 'à payer'} : ${fmtAr(d.r.amount)}`, text: `Échéance du ${new Date(d.date + 'T12:00:00').toLocaleDateString(loc())}${d.r.time ? ` à ${d.r.time}` : ''}${ds.length > 1 ? ` · ${ds.length} échéances en attente` : ''}`, href: '#/depenses', due: d });
       }
     }
-    if (can('couriers.settle')) {
+    if (can('couriers.settle') && moduleOn('deliveries')) {
       // Frais de livraison différés : à payer au livreur au plus vite (urgent le soir, ou s'il les a réclamés).
       for (const c of couriers) {
         const owed = -courierBalance(c.id).carry;
@@ -83,11 +84,11 @@ export function useNotifications() {
         out.push({ id: `frais:${c.id}:${today()}${c.feeClaimAt ? ':r' + c.feeClaimAt : ''}`, level: c.feeClaimAt || evening ? 'urgent' : 'important', title: `${c.feeClaimAt ? `${c.name} réclame ses frais` : `Frais de livraison à payer à ${c.name}`} : ${fmtAr(owed)}`, text: c.feeClaimAt ? `Réclamé le ${new Date(c.feeClaimAt).toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' })}` : 'Frais différés : à régler au plus tard à la clôture du soir', href: '#/livraisons/retour' });
       }
     }
-    if (can('deliveries.manage')) {
+    if (can('deliveries.manage') && moduleOn('deliveries')) {
       const ch = orders.filter((o) => choiceBlocking(o));
       if (ch.length) out.push({ id: 'choix', level: 'urgent', title: `${ch.length} livraison(s) avec un choix à préciser`, text: ch.slice(0, 4).map((o) => o.number).join(', '), href: can('deliveries.menu') ? '#/livraisons/retour' : '#/commandes/livraison' });
     }
-    if (can('orders.create')) {
+    if (can('orders.create') && moduleOn('prospects')) {
       // Clients à suivre dont l'heure de relance est passée (les siens ; le gérant voit tout).
       const due = dueProspects(can('users.manage') ? undefined : currentUser()?.id);
       if (due.length) out.push({ id: 'suivre', level: 'important', title: `${due.length} client(s) à relancer`, text: due.slice(0, 4).map((p) => p.fbName).join(', '), href: '#/commandes/suivre' });
@@ -96,7 +97,7 @@ export function useNotifications() {
       // Rapports au patron à envoyer : du jour (le soir), de la semaine (lundi), du mois (le 1er), de l'année (1er janvier).
       for (const d of reportsDue()) if (!reportSent[d.key]) out.push({ id: 'rapport:' + d.key, level: d.kind === 'day' ? 'info' : 'important', title: `Rapport ${d.kind === 'day' ? 'du jour' : d.kind === 'week' ? 'de la semaine' : d.kind === 'month' ? 'du mois' : "de l'année"} à envoyer au patron`, text: d.label, href: `#/rapports/patron?p=${d.kind}&a=${d.anchor}` });
     }
-    if (can('payout.validate')) {
+    if (can('payout.validate') && moduleOn('weeklyPayout')) {
       const w = unpaidWeeks(today(), mondayOf);
       if (w.length) out.push({ id: 'versement', level: 'important', title: `${w.length} semaine(s) terminée(s) pas encore versée(s) au patron`, text: `Dernière : ${fmtAr(w[0].expected)} à verser`, href: '#/recapitulatif' });
     }
@@ -109,14 +110,14 @@ export function useNotifications() {
     {
       // Compte boost du jour (les boosts tournent tous les jours) : rappel à ceux qui le font, alerte au gérant / super-admin.
       const me = currentUser();
-      if (can('boosts.enter') && me) {
+      if (can('boosts.enter') && me && moduleOn('boosts')) {
         const mine = allPages().filter((p) => me.roleId === 'role-manager' || can('users.manage') || (me.pageIds ?? []).includes(p.id)).map((p) => p.id);
         const dues = boostDues(new Date(), mine);
         const late = dues.filter((d) => d.late), soon = dues.filter((d) => !d.late);
         if (late.length) out.push({ id: `boost-late:${late.map((d) => d.pageId + d.date).join(',')}`, level: 'urgent', title: `Faites votre compte boost : ${late.length} en retard`, text: late.slice(0, 4).map((d) => `${pageName(d.pageId)} (${new Date(`${d.date}T12:00:00`).toLocaleDateString(loc(), { weekday: 'short', day: '2-digit', month: '2-digit' })})`).join(', '), href: '#/boosts/suivi' });
         else if (soon.length) out.push({ id: `boost-soon:${soon[0].date}`, level: 'important', title: `Compte boost à faire avant ${deadlineText(soon[0].date)}`, text: [...new Set(soon.map((d) => pageName(d.pageId)))].slice(0, 5).join(', '), href: '#/boosts/suivi' });
       }
-      if (can('records.correct')) {
+      if (can('records.correct') && moduleOn('boosts')) {
         const late = boostDues(new Date()).filter((d) => d.late);
         if (late.length) out.push({ id: `boost-team:${late.map((d) => d.pageId + d.date).join(',')}`, level: 'urgent', title: `Compte boost pas fait à l’heure : ${late.length} page(s)`, text: late.slice(0, 4).map((d) => `${pageName(d.pageId)} — ${boostOwners(d.pageId).map((u) => u.fullName).join(', ') || 'personne désignée'}`).join(' · '), href: '#/boosts/suivi' });
       }
@@ -136,7 +137,7 @@ export function useNotifications() {
     }
     const rank: Record<Level, number> = { urgent: 0, important: 1, info: 2 };
     return out.sort((a, b) => rank[a.level] - rank[b.level]);
-  }, [orders, moves, recs, products, sm, conflicts, payouts, prospects, couriers, settles, auditRows, readings, boostsT, reportSent, lastFile, lastCloud, minute]);
+  }, [orders, moves, recs, products, sm, conflicts, payouts, prospects, couriers, settles, auditRows, readings, boostsT, settings, reportSent, lastFile, lastCloud, minute]);
   const now = new Date().toISOString();
   return list.filter((n) => !hidden[notifSig(n)]).map((n) => ({ ...n, until: snoozes[n.id] && snoozes[n.id] > now ? snoozes[n.id] : undefined }));
 }

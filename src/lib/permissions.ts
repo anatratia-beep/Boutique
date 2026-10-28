@@ -8,7 +8,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { group: 'Articles et stock', key: 'catalog.view', label: 'Consulter les articles et le stock' },
   { group: 'Articles et stock', key: 'catalog.edit', label: 'Créer et modifier les articles, catégories et prix' },
   { group: 'Articles et stock', key: 'stock.adjust', label: 'Ajuster le stock et faire les inventaires' },
-  { group: 'Achats', key: 'purchases.manage', label: 'Gérer les achats en Chine et les arrivages' },
+  { group: 'Achats', key: 'purchases.manage', label: 'Gérer les achats aux fournisseurs' },
   { group: 'Achats', key: 'purchases.receive', label: 'Réceptionner la marchandise' },
   { group: 'Ventes', key: 'orders.create', label: 'Créer les commandes clients' },
   { group: 'Ventes', key: 'orders.prepare', label: 'Préparer les commandes' },

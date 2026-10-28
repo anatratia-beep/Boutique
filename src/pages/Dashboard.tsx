@@ -34,6 +34,7 @@ import { HEALTH, SALES_DAYS, healthOf, soldByVariant } from '../lib/stockRank';
 import { stockOf, type Variant } from '../lib/catalog';
 import { Badge } from '../ui/kit';
 import { loc } from '../lib/i18n';
+import { moduleOn } from '../lib/modules';
 
 export function DashboardPage() {
   const me = useMe();
@@ -86,7 +87,7 @@ function Board() {
 
       <EveningRecapBanner />
       {(can('reports.view') || can('treasury.view')) ? <><ManagerSummary /><SituationCard /><ManagerSales /><SalesExtras /><ManagerMoney /></> : can('orders.create') || can('pos.sell') ? <SellerBoard name={me.fullName} /> : null}
-      {can('orders.create') && <OrdersState />}
+      {can('orders.create') && moduleOn('orders') && <OrdersState />}
       {can('cashday.use') && (
         <div className="card row-between daycash-shortcut">
           <div><h3>Caisse du jour</h3><p className="small muted">{can('expenses.manage') ? 'Saisir une dépense de la caisse commune ou envoyer le récapitulatif global du jour.' : 'Voir les ventes du jour et envoyer le récapitulatif par WhatsApp.'}</p></div>
@@ -234,7 +235,7 @@ function ManagerBoard({ part }: { part: 'summary' | 'sales' | 'money' | 'chart' 
             <span className="small muted">{t.label}</span>
             <strong className={`stat-value num ${t.cur < 0 ? 'neg' : ''}`}>{t.value}</strong>
             <span className="small muted"><Delta cur={t.cur} prev={t.prev} pct={t.isPct} invert={t.invert} /> vs période précédente</span>
-            {t.label === "Chiffre d'affaires" && msgTotal > 0 && <span className="small msg-hint"><a href="#/boosts/suivi">{fmtNum(msgTotal)} messages (boosts)</a> · {fmtAr(k.revenue / msgTotal)} par message</span>}
+            {t.label === "Chiffre d'affaires" && msgTotal > 0 && moduleOn('boosts') && <span className="small msg-hint"><a href="#/boosts/suivi">{fmtNum(msgTotal)} messages (boosts)</a> · {fmtAr(k.revenue / msgTotal)} par message</span>}
           </div>
         ))}
       </div>
@@ -387,11 +388,11 @@ function OrdersState() {
   const n = (sts: string[]) => orders.filter((o) => sts.includes(o.status) && !isWalkIn(o) && scope.mine(o)).length;
   const due = couriers.reduce((t, c) => t + Math.max(0, courierBalance(c.id).due), 0);
   const tiles: { label: string; value: string; href: string; hot?: boolean }[] = [
-    { label: 'Clients à relancer', value: String(follow), href: '#/commandes/suivre', hot: follow > 0 },
+    ...(moduleOn('prospects') ? [{ label: 'Clients à relancer', value: String(follow), href: '#/commandes/suivre', hot: follow > 0 }] : []),
     { label: 'Enregistrées', value: String(n(['new', 'confirmed'])), href: '#/commandes/enregistrees' },
     { label: 'En attente de livraison', value: String(n(['ready'])), href: '#/commandes/attente' },
-    { label: 'En livraison', value: String(n(['out'])), href: '#/commandes/livraison' },
-    ...(can('deliveries.menu') ? [{ label: 'À rendre par les livreurs', value: fmtAr(due), href: '#/livraisons/retour' }] : []),
+    ...(moduleOn('deliveries') ? [{ label: 'En livraison', value: String(n(['out'])), href: '#/commandes/livraison' }] : []),
+    ...(can('deliveries.menu') && moduleOn('deliveries') ? [{ label: 'À rendre par les livreurs', value: fmtAr(due), href: '#/livraisons/retour' }] : []),
   ];
   return (
     <>
@@ -502,7 +503,7 @@ function Watchlist() {
   const t = todayYmd();
   const an = anomalies(addDays(t, -6), t);
   const cov = coverage(14).slice(0, 6);
-  const roi = boostRoi(t.slice(0, 8) + '01', t).filter((r) => r.profit < 0);
+  const roi = moduleOn('boosts') ? boostRoi(t.slice(0, 8) + '01', t).filter((r) => r.profit < 0) : [];
   if (!an.length && !cov.length && !roi.length) return null;
   return (
     <div className="card stack-s watch">

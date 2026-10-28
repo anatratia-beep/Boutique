@@ -21,7 +21,7 @@ export const allAccountIds = (): AccountId[] => [...payMethods().map((m) => m.id
 export type MoveType = 'opening' | 'expense' | 'income' | 'transfer' | 'owner_in' | 'owner_out' | 'courier_settlement' | 'purchase' | 'gap';
 export const MOVE_TYPES: Record<MoveType, string> = {
   opening: 'Solde de départ', expense: 'Dépense', income: 'Autre revenu', transfer: 'Virement entre comptes', owner_in: 'Apport du gérant',
-  owner_out: 'Retrait du gérant', courier_settlement: 'Règlement livreur', purchase: 'Paiement fournisseur (Chine)', gap: 'Écart de clôture',
+  owner_out: 'Retrait du gérant', courier_settlement: 'Règlement livreur', purchase: 'Paiement fournisseur', gap: 'Écart de clôture',
 };
 export interface CashMove extends BaseRecord {
   at: string;            // date et heure de l'opération
@@ -164,7 +164,7 @@ export async function addTransfer(from: AccountId, to: AccountId, amount: number
   await audit('Virement entre comptes', `${label} : ${fmtMoney(amount)}${fee ? ` (frais ${fmtMoney(fee)})` : ''}`, 'cashMoves', transferId);
 }
 export async function deleteMove(m: CashMove) {
-  if (m.refType === 'purchases' || (m.type === 'purchase' && m.refId)) throw new Error('Ce mouvement est un paiement de commande Chine : supprimez-le depuis la commande (Achats), pour que la commande et la trésorerie restent d’accord.');
+  if (m.refType === 'purchases' || (m.type === 'purchase' && m.refId)) throw new Error('Ce mouvement est un paiement d’achat : supprimez-le depuis la commande (Achats), pour que la commande et la trésorerie restent d’accord.');
   if (m.type === 'courier_settlement') throw new Error('Ce mouvement est un versement de livreur : il ne se supprime pas depuis la trésorerie.');
   if (m.refType === 'payouts') throw new Error('Ce mouvement est un versement de la semaine : annulez-le depuis Récapitulatif → Semaine → Historique des versements.');
   if (m.type === 'expense' || m.type === 'income') assertOpenAt(m.at, 'Suppression');

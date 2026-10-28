@@ -18,7 +18,8 @@ export interface Company extends BaseRecord {
   autoLockMinutes: number;
   currency?: string;         // code de la devise (MGA par défaut) — voir lib/currency.ts
   currencySymbol?: string;   // symbole personnalisé (facultatif)
-  dialCode?: string;         // indicatif téléphonique du pays (261 par défaut), pour les liens WhatsApp
+  dialCode?: string;
+  modules?: Partial<Record<string, boolean>>; // fonctions activées (voir lib/modules.ts)         // indicatif téléphonique du pays (261 par défaut), pour les liens WhatsApp
   wholesaleMinQty?: number;
   usdRate?: number;          // taux du dollar (Ar) pour convertir la dépense des boosts
   targetDay?: number;        // objectif de chiffre d'affaires par jour (Ar)

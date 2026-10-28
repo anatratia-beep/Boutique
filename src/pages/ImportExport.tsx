@@ -145,13 +145,13 @@ function ExportTab() {
   );
 }
 
-/** Onglets communs « Commandes Chine » / « Réceptions » (un seul menu Achats et réceptions). */
+/** Onglets communs « Achats » / « Réceptions » (un seul menu Achats et réceptions). */
 export function PurchasingTabs({ current }: { current: 'achats' | 'receptions' }) {
   const can = useCan();
   if (!can('purchases.manage') || !can('purchases.receive')) return null;
   return (
     <div className="tabs" role="tablist">
-      <button role="tab" aria-selected={current === 'achats'} onClick={() => navigate('/achats')}>Commandes Chine</button>
+      <button role="tab" aria-selected={current === 'achats'} onClick={() => navigate('/achats')}>Achats</button>
       <button role="tab" aria-selected={current === 'receptions'} onClick={() => navigate('/receptions')}>Réceptions</button>
     </div>
   );

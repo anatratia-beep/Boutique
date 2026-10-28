@@ -529,7 +529,7 @@ function ZoneForm({ zone, count, onClose }: { zone?: Zone; count: number; onClos
         setError(null);
         if (!name.trim()) return setError('Indiquez le nom de la zone.');
         const f = pickup ? 0 : parseNum(fee);
-        if (!pickup && !(f != null && f > 0)) return setError('Indiquez les frais de livraison de cette zone.');
+        if (f != null && f < 0) return setError('Les frais de livraison ne peuvent pas être négatifs.');
         setBusy(true);
         await save('zones', { id: zone?.id, name: name.trim(), fee: f ?? 0, pickup: pickup || undefined, active, order: zone?.order ?? count });
         await audit(zone ? 'Zone modifiée' : 'Zone ajoutée', `${name.trim()} — ${fmtMoney(f ?? 0)}`);
@@ -538,7 +538,7 @@ function ZoneForm({ zone, count, onClose }: { zone?: Zone; count: number; onClos
       }}>{zone ? 'Enregistrer' : 'Ajouter la zone'}</Button></>}>
       <div className="stack">
         <TextField label="Nom de la zone / de l’axe" required value={name} onChange={setName} placeholder="Ex. Ivandry – Ambatobe" autoFocus />
-        {!pickup && <TextField label={`Frais de livraison (${curSym()})`} required value={fee} onChange={setFee} inputMode={moneyInputMode()} placeholder="Ex. 4000" />}
+        {!pickup && <TextField label={`Frais de livraison (${curSym()})`} value={fee} onChange={setFee} inputMode={moneyInputMode()} placeholder="0" hint="Facultatif : laissez vide si la livraison est gratuite. Modifiable à tout moment, et commande par commande." />}
         <Toggle checked={pickup} onChange={setPickup} disabled={fixedPickup} label={`Sur boutique (le client vient chercher : 0 ${curSym()}, sans livreur)`} />
         {zone && <Toggle checked={active} onChange={setActive} label="Zone active (décochez pour la masquer dans les commandes)" />}
         {error && <div className="notice notice-danger"><Icon name="alert" /><span>{error}</span></div>}

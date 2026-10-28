@@ -18,6 +18,7 @@ import { Help, Badge, Button, Empty, IconButton, PageHead, fmtDate, toast } from
 import { Icon } from '../ui/icons';
 import { PrintDialog } from '../ui/print';
 import { PayoutCard, PayoutHistory, WeekGrid } from './WeekBoard';
+import { moduleOn } from '../lib/modules';
 import { loc } from '../lib/i18n';
 
 export function RecapPage() {
@@ -68,11 +69,11 @@ export function RecapPage() {
         {withProfit && <Stat label="Bénéfice brut" value={r.grossProfit} />}
       </div>
 
-      {mode === 'week' && <><PayoutCard monday={monday} /><WeekGrid monday={monday} withProfit={withProfit} /></>}
+      {mode === 'week' && <>{moduleOn('weeklyPayout') && <PayoutCard monday={monday} />}<WeekGrid monday={monday} withProfit={withProfit} /></>}
       {withProfit && <ProfitDetail from={r.from} to={r.to} gross={r.grossProfit} sales={r.netSales} cost={r.cost} />}
       {mode === 'week' ? <WeekTables days={days} r={r} /> : <DayTables r={r} />}
       <MoneyCard r={r} />
-      {mode === 'week' && <PayoutHistory onPick={(mon) => { setDate(mon); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />}
+      {mode === 'week' && moduleOn('weeklyPayout') && <PayoutHistory onPick={(mon) => { setDate(mon); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />}
       <Share text={text} title={mode === 'week' ? 'Récapitulatif de la semaine' : 'Récapitulatif du jour'} sub={mode === 'week' ? `${fmtDate(monday)} au ${fmtDate(end)}` : fmtDate(date)} sections={sections} />
     </>
   );

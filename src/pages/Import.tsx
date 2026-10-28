@@ -115,30 +115,9 @@ const TEMPLATES = [
     ], { translate: false }),
   },
   {
-    key: 'commande', title: 'Commande Chine', text: 'Le même format que vos fichiers de commande : référence, n° de commande, taille, quantités, prix en RMB, prix de vente.',
-    build: () => writeXlsx([
-      { name: 'Suivi commande', columns: [
-        { header: 'REFERENCE', width: 11, input: true }, { header: 'NUMERO DE COMMANDE', width: 22, input: true }, { header: 'NUMERO DE SUIVI', width: 16, input: true }, { header: 'ARTICLE', width: 14 },
-        { header: 'LIEN', width: 30, input: true }, { header: 'NOM', width: 8, input: true }, { header: 'QTE COMMANDEE', width: 10, input: true }, { header: 'QTE RECU', width: 9, input: true },
-        { header: 'PU (RMB)', width: 9, input: true }, { header: 'FRAIS CHINE (RMB)', width: 11, input: true }, { header: 'REMISE (RMB)', width: 10, input: true }, { header: 'ETAT', width: 12, input: true },
-        { header: 'PV DET', width: 9, input: true }, { header: 'PV GRS', width: 9, input: true },
-      ], rows: [
-        ['PH6', '3306228600473757489', '302109811698', '(photo)', 'https://detail.1688.com/offer/…', 'L', 15, null, 27.48, 115.48, 0, 'Commandé', 48000, 45000],
-        ['PH6', null, null, null, null, 'XL', 20, null, 27.48, null, null, null, 48000, 45000],
-      ] },
-      { name: "Mode d'emploi", columns: [], rows: [], notes: [
-        '#Modèle Commande Chine — Trésor en ligne',
-        'Une ligne par taille (colonne NOM). Répétez la REFERENCE ou fusionnez les cellules, comme dans vos fichiers actuels.',
-        'FRAIS CHINE et REMISE : une seule fois par commande (première ligne).',
-        'Le taux du RMB et les tarifs du transit ne sont pas dans ce fichier : ils se saisissent dans Trésor en ligne (taux à l’import, transit à la réception).',
-        'Vos anciens fichiers (avec PRIX DE REVIENT, Volume m3, Frais transit…) sont aussi acceptés tels quels.',
-      ] },
-    ], { translate: false }),
-  },
-  {
-    key: 'fournisseurs', title: 'Fournisseurs', text: 'Nom, boutique 1688, contact WeChat ou téléphone, ville.',
+    key: 'fournisseurs', title: 'Fournisseurs', text: 'Nom, adresse ou site, contact (téléphone, e-mail), ville.',
     build: () => writeXlsx([{ name: 'Fournisseurs', columns: [{ header: 'Nom', width: 26, input: true }, { header: 'Boutique / lien', width: 34, input: true }, { header: 'Contact', width: 20, input: true }, { header: 'Ville', width: 14, input: true }, { header: 'Notes', width: 30, input: true }],
-      rows: [['Usine pyjamas Guangzhou', 'shop566869krq2495.1688.com', 'WeChat : xxxx', 'Guangzhou', '']] }], { translate: false }),
+      rows: [['Grossiste du marché', 'Lot 12, rue du Commerce', '034 00 000 00', 'Antananarivo', '']] }], { translate: false }),
   },
   {
     key: 'categories', title: 'Catégories', text: 'La liste de vos catégories, avec une catégorie parente si besoin (ex. Enfant › Boxer garçon).',
@@ -195,7 +174,7 @@ export function ImportPage() {
         <h2>Importer un fichier</h2>
         <label className="dropzone">
           <Icon name="upload" size={28} />
-          <span><strong>Choisir un fichier Excel (.xlsx)</strong><br /><span className="small muted">Fichier de reprise du stock, fichier de commande Chine, modèle Trésor en ligne…</span></span>
+          <span><strong>Choisir un fichier Excel (.xlsx)</strong><br /><span className="small muted">Fichier de reprise du stock, modèle Trésor en ligne…</span></span>
           <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => { const f = e.target.files?.[0]; if (f) open(f); e.target.value = ''; }} />
         </label>
         {busy && <p className="small muted">Lecture du fichier…</p>}

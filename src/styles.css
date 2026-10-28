@@ -1333,3 +1333,12 @@ a.bell { text-decoration: none; }
 .licence-bar { position: fixed; z-index: 140; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: min(560px, calc(100% - 24px)); display: flex; gap: 10px; align-items: center; padding: 10px 10px 10px 14px; border-radius: 12px; background: var(--gold-soft); color: var(--ink); box-shadow: var(--shadow); font-size: .9rem; }
 .licence-bar > svg { color: var(--gold); flex: none; }
 .licence-bar > span { flex: 1; }
+
+/* Interrupteur (Paramètres → Fonctions) */
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; flex-shrink: 0; font-size: .85rem; }
+.switch input { appearance: none; -webkit-appearance: none; width: 44px; height: 26px; border-radius: 13px; background: var(--line); position: relative; cursor: pointer; transition: background .15s; margin: 0; flex-shrink: 0; }
+.switch input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.switch input:checked { background: var(--brand); }
+.switch input:checked::after { transform: translateX(18px); }
+.switch input:disabled { opacity: .5; cursor: not-allowed; }
+.switch input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }

@@ -26,6 +26,7 @@ import { siblingsOf } from '../lib/attrs';
 import { deliveryNoteDoc, parcelLabelDoc, ticketDoc } from '../lib/print';
 import { PrintButton, type DocChoice } from '../ui/print';
 import { ProspectForm, ProspectList } from './Prospects';
+import { useModule } from '../lib/modules';
 import { Zones } from './Deliveries';
 import { bucketOf, type Prospect } from '../lib/prospects';
 import { AdjustList, LotPicker, LotTag, lotPhoto } from './Lots';
@@ -90,8 +91,10 @@ export function OrderStatusBadge({ o }: { o: Order }) {
   </>;
 }
 
-function OrderList({ tabKey }: { tabKey?: string }) {
+function OrderList({ tabKey: rawTab }: { tabKey?: string }) {
   const can = useCan();
+  const prospectsOn = useModule('prospects');
+  const tabKey = rawTab === 'suivre' && !prospectsOn ? undefined : rawTab;
   const orders = useTable<Order>('orders');
   useTable<Zone>('zones');
   const couriers = useTable<Courier>('couriers');
@@ -137,13 +140,13 @@ function OrderList({ tabKey }: { tabKey?: string }) {
 
   return (
     <>
-      <PageHead title="Commandes" subtitle="Commandes Facebook, téléphone et autres, jusqu’à la livraison et au règlement du livreur."
-        actions={can('orders.create') && <><Button variant="ghost" icon="users" onClick={() => setFollowing(true)}>Client à suivre</Button><Button icon="plus" onClick={() => setCreating(true)}>Nouvelle commande</Button></>} />
+      <PageHead title="Commandes" subtitle="Commandes reçues par téléphone, WhatsApp, réseaux sociaux…, jusqu’à la remise au client."
+        actions={can('orders.create') && <>{prospectsOn && <Button variant="ghost" icon="users" onClick={() => setFollowing(true)}>Client à suivre</Button>}<Button icon="plus" onClick={() => setCreating(true)}>Nouvelle commande</Button></>} />
       <ScopeBar scope={scope} mineLabel="Mes commandes" text={scope.locked ? 'Vous voyez seulement les commandes de vos pages' : 'Vous voyez les commandes que vous avez enregistrées.'} />
       <WeekendOrdersNotice />
       <ExchangePairsNotice />
       <div className="tabs" role="tablist">
-        {(() => { const n = prospects.filter((x) => x.status === 'open' && scope.mine({ createdBy: x.ownerId, createdByName: x.ownerName }) && bucketOf(x) !== 'later').length; return <button role="tab" aria-selected={tabKey === 'suivre'} onClick={() => switchTab('suivre')}>À suivre{n ? <span className="tab-count tab-count-hot">{n}</span> : null}</button>; })()}
+        {prospectsOn && (() => { const n = prospects.filter((x) => x.status === 'open' && scope.mine({ createdBy: x.ownerId, createdByName: x.ownerName }) && bucketOf(x) !== 'later').length; return <button role="tab" aria-selected={tabKey === 'suivre'} onClick={() => switchTab('suivre')}>À suivre{n ? <span className="tab-count tab-count-hot">{n}</span> : null}</button>; })()}
         {TABS.map((t) => {
           const n = orders.filter((o) => (!isWalkIn(o) || o.status === 'cancelled') && scope.mine(o) && inTab(t, o)).length;
           return <button key={t.key} role="tab" aria-selected={tabKey !== 'suivre' && tab.key === t.key} onClick={() => switchTab(t.key)}>{t.label}{!['terminees', 'annulees'].includes(t.key) && n ? <span className={`tab-count ${t.key === 'regler' ? 'tab-count-hot' : ''}`}>{n}</span> : null}</button>;
@@ -334,7 +337,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
     if (!zoneId) return setError('Le lieu de livraison est obligatoire : choisissez une zone (ou « Sur boutique »).');
     if (!pickup) {
       if (!place.trim()) return setError('Indiquez le lieu précis de livraison.');
-      if (!exchangeOf && !((parseNum(fee) ?? 0) > 0)) return setError('Les frais de livraison sont obligatoires pour une livraison.');
+      if ((parseNum(fee) ?? 0) < 0) return setError('Les frais de livraison ne peuvent pas être négatifs.');
       if (!courierId || (courierId === '__new' && !newCourier.trim())) return setError('Choisissez le livreur de cette commande.');
     }
     if (!priced.length && !exchangeOf) return setError('Ajoutez au moins un article.');
@@ -395,7 +398,7 @@ export function OrderForm({ order, exchangeOf, onClose, onSaved, prefill: pre }:
           <TextField label="Nom Facebook (facultatif)" value={facebook} onChange={setFacebook} placeholder="Tel qu’il apparaît dans Messenger" />
           <SelectField label="Zone de livraison" required value={zoneId} onChange={onZone} options={[{ value: '', label: '— Choisir —' }, ...zones.map((z) => ({ value: z.id, label: `${z.name} (${fmtAr(z.fee)})` }))]} />
           <TextField label={pickup ? 'Lieu (facultatif)' : 'Lieu précis'} required={!pickup} value={place} onChange={setPlace} placeholder={pickup ? 'Boutique' : 'Ex. Analakely, devant la pharmacie'} />
-          <TextField label={`Frais de livraison (${curSym()})`} required={!pickup} value={pickup ? '0' : fee} onChange={setFee} inputMode={moneyInputMode()} disabled={pickup} hint={pickup ? 'Retrait en boutique : pas de frais.' : 'Obligatoire. Rempli selon la zone, modifiable.'} />
+          <TextField label={`Frais de livraison (${curSym()})`} value={pickup ? '0' : fee} onChange={setFee} inputMode={moneyInputMode()} disabled={pickup} hint={pickup ? 'Retrait en boutique : pas de frais.' : 'Facultatif (0 si la livraison est gratuite). Proposé selon la zone, modifiable.'} />
           {!pickup && <SelectField label="Livreur" required value={courierId} onChange={setCourierId} options={[{ value: '', label: '— Choisir —' }, ...couriers.map((c) => ({ value: c.id, label: c.name })), { value: '__new', label: '+ Nouveau livreur…' }]} />}
           {!pickup && courierId === '__new' && <TextField label="Nom du nouveau livreur" required value={newCourier} onChange={setNewCourier} />}
         </div>

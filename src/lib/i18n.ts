@@ -1,20 +1,48 @@
-// Langue de l'interface (français par défaut, anglais en option).
-// Le logiciel est écrit en français ; en anglais, une couche de traduction remplace les textes affichés
+// Langue de l'interface (français par défaut ; anglais, espagnol, portugais, arabe, malgache au choix).
+// Le logiciel est écrit en français ; dans une autre langue, une couche de traduction remplace les textes affichés
 // (écran, attributs d'accessibilité, titres, boîtes de dialogue) et ceux des impressions, fichiers Excel et messages,
-// à partir d'un dictionnaire (lib/i18n/en.ts) : textes fixes et modèles avec trous ({0}, {1}…).
-import { EN } from './i18n/en';
+// à partir d'un dictionnaire public/i18n/<langue>.json : textes fixes et modèles avec trous ({0}, {1}…).
+// Pour ajouter une langue : créer public/i18n/<code>.json (mêmes clés que en.json) et l'ajouter à LANGS.
 
-export type Lang = 'fr' | 'en';
+export type Lang = 'fr' | 'en' | 'es' | 'pt' | 'ar' | 'mg';
+export interface LangDef { id: Lang; label: string; locale: string; rtl?: boolean; soon?: boolean /* dictionnaire pas encore livré */ }
+export const LANGS: LangDef[] = [
+  { id: 'fr', label: 'Français', locale: 'fr-FR' },
+  { id: 'en', label: 'English', locale: 'en-GB' },
+  { id: 'es', label: 'Español', locale: 'es-ES', soon: true },
+  { id: 'pt', label: 'Português', locale: 'pt-PT', soon: true },
+  { id: 'ar', label: 'العربية', locale: 'ar-u-nu-latn', rtl: true, soon: true },
+  { id: 'mg', label: 'Malagasy', locale: 'mg-MG', soon: true },
+];
 const KEY = 'boutique.lang';
 let lang: Lang = 'fr';
+let EN: Record<string, string> = {}; // dictionnaire de la langue choisie (nom historique)
 
 export const getLang = () => lang;
-/** Format des nombres et dates selon la langue. */
-export const loc = () => (lang === 'en' ? 'en-GB' : 'fr-FR');
+const def = () => LANGS.find((l) => l.id === lang) ?? LANGS[0];
+/** Format des nombres et dates selon la langue (le malgache garde le format français si l'appareil ne le connaît pas). */
+export const loc = () => { const l = def().locale; try { return Intl.DateTimeFormat.supportedLocalesOf([l]).length ? l : 'fr-FR'; } catch { return 'fr-FR'; } };
+/** Langues où la virgule sépare les milliers (« 1,234.5 ») ; ailleurs elle sépare les décimales. */
+export const commaThousands = () => lang === 'en' || lang === 'ar';
 
 export function initialLang(): Lang {
-  try { const v = localStorage.getItem(KEY); if (v === 'fr' || v === 'en') return v; } catch { /* */ }
-  return 'fr'; // français par défaut ; l'anglais se choisit sur l'écran d'activation ou dans Paramètres → Apparence
+  try { const v = localStorage.getItem(KEY) as Lang | null; if (v && LANGS.some((l) => l.id === v)) return v; } catch { /* */ }
+  return 'fr'; // français par défaut ; la langue se choisit sur l'écran d'activation ou dans Paramètres → Apparence
+}
+/** Charge le dictionnaire d'une langue (fichier livré avec le logiciel, disponible hors ligne). */
+export async function loadLang(l: Lang): Promise<boolean> {
+  if (l === 'fr') { EN = {}; return true; }
+  try {
+    const r = await fetch(`./i18n/${l}.json`);
+    if (!r.ok) return false;
+    EN = await r.json(); built = false; exact.clear(); patterns.length = 0; memo.clear();
+    return true;
+  } catch { return false; }
+}
+/** Change de langue sur cet appareil (rechargement de l'application). */
+export function chooseLang(l: Lang) {
+  try { localStorage.setItem(KEY, l); } catch { /* */ }
+  location.reload();
 }
 
 // ---------- Dictionnaire ----------
@@ -156,7 +184,7 @@ function translateTree(root: Node) {
   while ((n = w.nextNode())) { if (n.nodeType === 3) translateText(n as Text); else translateAttrs(n as Element); }
 }
 /** Traduit un autre document (impression A4 dans un cadre) — sans effet en français. */
-export function translateDom(root: Element) { if (lang === 'en') { translateTree(root); root.ownerDocument.documentElement.lang = 'en'; } }
+export function translateDom(root: Element) { if (lang !== 'fr') { translateTree(root); root.ownerDocument.documentElement.lang = lang; root.ownerDocument.documentElement.dir = def().rtl ? 'rtl' : 'ltr'; } }
 /** Remet le français partout (passage de l'anglais au français sans recharger). */
 function restoreTree(root: Element) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
@@ -173,7 +201,8 @@ function translateTitle() { const t = document.title; if (t !== tr(titleFr)) tit
 export function setLang(l: Lang) {
   lang = l;
   try { localStorage.setItem(KEY, l); } catch { /* */ }
-  document.documentElement.lang = l;
+  document.documentElement.lang = l === 'ar' ? 'ar' : l;
+  document.documentElement.dir = def().rtl ? 'rtl' : 'ltr';
   observer?.disconnect(); observer = null;
   if (l === 'fr') { restoreTree(document.body); if (titleFr) document.title = titleFr; return; }
   translateTree(document.body); translateTitle();

@@ -1,5 +1,5 @@
-// Liste les textes d'interface du code qui n'ont pas encore de traduction anglaise dans src/lib/i18n/en.ts.
-// Usage : node scripts/i18n-missing.cjs   (nécessite le paquet « typescript »)
+// Liste les textes d'interface du code qui n'ont pas encore de traduction anglaise dans public/i18n/<langue>.json.
+// Usage : node scripts/i18n-missing.cjs [src] [langue]   (nécessite le paquet « typescript »)
 // Les textes affichés sont relevés grâce à l'analyseur TypeScript (chaînes, modèles `…${x}…` → {0}, textes JSX).
 const ts = require('typescript');
 const fs = require('fs'); const path = require('path');
@@ -56,8 +56,8 @@ function walk(dir) {
   }
 }
 walk(ROOT);
-const src = fs.readFileSync(path.join(ROOT, 'lib', 'i18n', 'en.ts'), 'utf8');
-const EN = JSON.parse(src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1));
+const lang = process.argv[3] || 'en';
+const EN = JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'public', 'i18n', `${lang}.json`), 'utf8'));
 const missing = Object.keys(texts).filter((k) => !(k in EN));
 for (const k of missing) console.log(`${texts[k]}\t${k}`);
 console.error(`${missing.length} texte(s) sans traduction (certains sont des noms de fichiers ou des clés d'import, à ignorer).`);

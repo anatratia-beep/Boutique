@@ -1,4 +1,5 @@
-// Achats en Chine : commandes fournisseurs, suivi, paiements, fournisseurs.
+// Achats : commandes aux fournisseurs, réception en stock, paiements, fournisseurs.
+// Tout est dans la devise de la boutique (les anciennes commandes en RMB restent lisibles).
 import { useMemo, useState } from 'react';
 import { fmtMoney, curSym, currency as shopCurrency, roundMoney, moneyInputMode } from '../lib/currency';
 import { audit, useCan } from '../lib/auth';
@@ -14,10 +15,11 @@ import { Icon } from '../ui/icons';
 import { voidPurchase } from '../lib/corrections';
 import { ACCOUNTS, accountIds, addMove, atFor, type AccountId } from '../lib/money';
 import { ProductForm, Thumb } from './Products';
+import { activeMethods, methodLabel } from '../lib/paymethods';
 import { loc } from '../lib/i18n';
 
 const money = (n: number, cur: 'RMB' | 'MGA') => cur === 'RMB' ? `${n.toLocaleString(loc(), { maximumFractionDigits: 2 })} ¥` : fmtAr(n);
-const FLOW: PurchaseStatus[] = ['ordered', 'shipped', 'arrived', 'received'];
+const FLOW: PurchaseStatus[] = ['ordered', 'received'];
 
 export function PurchasesPage() {
   const route = useRoute();
@@ -40,7 +42,7 @@ function PurchaseList() {
     const n = q.trim().toLowerCase();
     return applyDates(purchases
       .filter((p) => tab === 'all' || (tab === 'open' ? !['received', 'cancelled'].includes(p.status) : p.status === 'received'))
-      .filter((p) => !n || `${p.number} ${p.orderRef} ${p.trackingNo} ${get<Supplier>('suppliers', p.supplierId || '')?.name} ${p.notes}`.toLowerCase().includes(n))
+      .filter((p) => !n || `${p.number} ${p.orderRef ?? ''} ${get<Supplier>('suppliers', p.supplierId || '')?.name} ${p.notes ?? ''}`.toLowerCase().includes(n))
       .sort((a, b) => b.number.localeCompare(a.number)), (p) => p.date || p.createdAt, period, order);
   }, [purchases, tab, q, order, period]);
   const open = purchases.filter((p) => !['received', 'cancelled'].includes(p.status));
@@ -49,16 +51,16 @@ function PurchaseList() {
 
   return (
     <>
-      <PageHead title="Achats et réceptions" subtitle={`${open.length} commande(s) en cours`}
+      <PageHead title="Achats et réceptions" subtitle={`${open.length} achat(s) en cours`}
         actions={<>
           <Button variant="ghost" icon="users" onClick={() => navigate('/achats/fournisseurs')}>Fournisseurs</Button>
           {can('purchases.receive') && <Button variant="ghost" icon="download" onClick={() => navigate('/receptions/nouvelle')}>Réceptionner</Button>}
-          {can('purchases.manage') && <Button icon="plus" onClick={() => setCreating(true)}>Nouvelle commande</Button>}
+          {can('purchases.manage') && <Button icon="plus" onClick={() => setCreating(true)}>Nouvel achat</Button>}
         </>} />
       <PurchasingTabs current="achats" />
       <div className="stat-grid">
-        <div className="card stat"><span className="muted small">Commandes en cours</span><span className="stat-value">{open.length}</span></div>
-        <div className="card stat"><span className="muted small">Pièces en route</span><span className="stat-value">{fmtNum(openQty)}</span></div>
+        <div className="card stat"><span className="muted small">Achats en cours</span><span className="stat-value">{open.length}</span></div>
+        <div className="card stat"><span className="muted small">Pièces attendues</span><span className="stat-value">{fmtNum(openQty)}</span></div>
         {can('costs.view') && <div className="card stat"><span className="muted small">Reste à payer aux fournisseurs</span><span className="stat-value">{fmtAr(unpaid)}</span></div>}
       </div>
       <div className="card stack">
@@ -66,13 +68,13 @@ function PurchaseList() {
           <div className="segmented" role="group">
             {([['open', 'En cours'], ['received', 'Reçues'], ['all', 'Toutes']] as const).map(([k, l]) => <button key={k} aria-pressed={tab === k} onClick={() => setTab(k)}>{l}</button>)}
           </div>
-          <div className="field" style={{ flex: '1 1 240px', maxWidth: 360 }}><input aria-label="Rechercher" placeholder="N° de commande, suivi, fournisseur…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="field" style={{ flex: '1 1 240px', maxWidth: 360 }}><input aria-label="Rechercher" placeholder="N° de commande, fournisseur…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         </div>
-        <ListDates period={period} onPeriod={setPeriod} order={order} onOrder={setOrder} what="Date de commande" />
+        <ListDates period={period} onPeriod={setPeriod} order={order} onOrder={setOrder} what="Date d’achat" />
       </div>
       <div className="card card-flush">
-        {list.length === 0 ? <Empty icon="list" title={purchases.length ? 'Aucune commande ici' : 'Aucune commande pour l’instant'}>
-          {!purchases.length && can('purchases.manage') && <div className="row" style={{ justifyContent: 'center' }}><Button icon="plus" onClick={() => setCreating(true)}>Saisir une commande</Button><Button variant="ghost" icon="upload" onClick={() => navigate('/import')}>Importer un fichier commande</Button></div>}
+        {list.length === 0 ? <Empty icon="list" title={purchases.length ? 'Aucun achat ici' : 'Aucun achat pour l’instant'}>
+          {!purchases.length && can('purchases.manage') && <div className="row" style={{ justifyContent: 'center' }}><Button icon="plus" onClick={() => setCreating(true)}>Saisir un achat</Button></div>}
         </Empty> : (
           <ul className="list">
             {list.map((p) => {
@@ -85,7 +87,7 @@ function PurchaseList() {
                     <Thumb src={firstProduct?.photo} />
                     <div className="list-item-main">
                       <div className="row" style={{ gap: 8 }}><span className="list-item-title">{p.number}</span><Badge tone={st.tone}>{st.label}</Badge></div>
-                      <p className="small muted">{fmtDate(p.date)} · {get<Supplier>('suppliers', p.supplierId || '')?.name || 'Fournisseur non indiqué'}{p.orderRef ? ` · n° ${p.orderRef}` : ''}</p>
+                      <p className="small muted">{fmtDate(p.date)} · {get<Supplier>('suppliers', p.supplierId || '')?.name || 'Fournisseur non indiqué'}{p.orderRef ? ` · réf. ${p.orderRef}` : ''}</p>
                       <p className="small muted">{[...new Set(p.lines.map((l) => get<Product>('products', get<Variant>('variants', l.variantId)?.productId || '')?.code).filter(Boolean))].slice(0, 6).join(', ')}</p>
                     </div>
                     <div className="list-item-side">
@@ -127,11 +129,11 @@ function PurchaseDetail({ id }: { id: string }) {
   const paid = purchasePaid(p);
   const sup = get<Supplier>('suppliers', p.supplierId || '');
   const recs = receptions.filter((r: any) => r.purchaseIds?.includes(p.id));
-  const flowIdx = FLOW.indexOf(p.status === 'partial' ? 'arrived' : p.status);
+  const flowIdx = p.status === 'received' ? 1 : 0; // anciennes étapes (expédiée, arrivée, reçue en partie) = « Commandée »
 
   async function setStatus(s: PurchaseStatus) {
     await save('purchases', { id: p!.id, status: s, statusDates: { ...(p!.statusDates || {}), [s]: todayYmd() } });
-    await audit('Commande Chine', `${p!.number} : ${PURCHASE_STATUS[s].label}`, 'purchases', p!.id);
+    await audit('Achat', `${p!.number} : ${PURCHASE_STATUS[s].label}`, 'purchases', p!.id);
     toast(PURCHASE_STATUS[s].label);
   }
 
@@ -145,7 +147,7 @@ function PurchaseDetail({ id }: { id: string }) {
 
   return (
     <>
-      <div className="row"><Button variant="quiet" icon="chevronRight" className="back-btn" onClick={() => navigate('/achats')}>Achats Chine</Button></div>
+      <div className="row"><Button variant="quiet" icon="chevronRight" className="back-btn" onClick={() => navigate('/achats')}>Achats</Button></div>
       <div className="card stack">
         <div className="row-between" style={{ alignItems: 'flex-start' }}>
           <div className="stack-s">
@@ -169,19 +171,15 @@ function PurchaseDetail({ id }: { id: string }) {
         )}
         {can('purchases.manage') && (
           <div className="row">
-            {p.status === 'ordered' && <Button variant="ghost" onClick={() => setStatus('shipped')}>Marquer expédiée de Chine</Button>}
-            {['ordered', 'shipped'].includes(p.status) && <Button variant="ghost" onClick={() => setStatus('arrived')}>Marquer arrivée à Madagascar</Button>}
             {p.status === 'partial' && <Button variant="ghost" onClick={() => setClose(true)}>Clôturer (le reste ne viendra pas)</Button>}
             {!['received', 'cancelled', 'partial'].includes(p.status) && <Button variant="danger" icon="x" onClick={() => setCancel(true)}>Annuler la commande</Button>}
             {['received', 'partial'].includes(p.status) && can('records.correct') && <Button variant="danger" icon="x" onClick={() => setVoiding(true)}>Annuler la commande (erreur)</Button>}
           </div>
         )}
         <div className="kv-row">
-          <div><span className="small muted">N° commande 1688</span><strong>{p.orderRef || '—'}</strong></div>
-          <div><span className="small muted">N° de suivi</span><strong>{p.trackingNo || '—'}</strong></div>
-          <div><span className="small muted">Transitaire</span><strong>{p.forwarder || '—'}</strong></div>
+          {p.orderRef && <div><span className="small muted">Référence fournisseur</span><strong>{p.orderRef}</strong></div>}
           <div><span className="small muted">Pièces</span><strong className="num">{fmtNum(purchaseReceivedQty(p))} / {fmtNum(purchaseQty(p))} reçues</strong></div>
-          {showCost && <div><span className="small muted">Taux</span><strong className="num">{p.currency === 'RMB' ? `1 ¥ = ${fmtNum(p.rate, 2)} ${curSym()}` : shopCurrency().name}</strong></div>}
+          {showCost && p.currency === 'RMB' && <div><span className="small muted">Taux</span><strong className="num">{`1 ¥ = ${fmtNum(p.rate, 2)} ${curSym()}`}</strong></div>}
         </div>
         {p.link && <a className="small" href={p.link} target="_blank" rel="noreferrer">Ouvrir le lien de la commande</a>}
         {p.notes && <p className="small">{p.notes}</p>}
@@ -212,7 +210,7 @@ function PurchaseDetail({ id }: { id: string }) {
             {showCost && (
               <tfoot>
                 <tr><td colSpan={4}>Marchandises</td><td className="t-num">{money(purchaseGoods(p), p.currency)}</td></tr>
-                {p.chinaFees ? <tr><td colSpan={4}>Frais de livraison en Chine</td><td className="t-num">+ {money(p.chinaFees, p.currency)}</td></tr> : null}
+                {p.chinaFees ? <tr><td colSpan={4}>Frais (transport…)</td><td className="t-num">+ {money(p.chinaFees, p.currency)}</td></tr> : null}
                 {p.discount ? <tr><td colSpan={4}>Remise</td><td className="t-num">− {money(p.discount, p.currency)}</td></tr> : null}
                 <tr className="t-total"><td colSpan={4}>Total fournisseur</td><td className="t-num">{money(total, p.currency)}{p.currency === 'RMB' ? <div className="small muted">≈ {fmtAr(purchaseTotalAr(p))}</div> : null}</td></tr>
               </tfoot>
@@ -267,9 +265,9 @@ function PurchaseDetail({ id }: { id: string }) {
 function PaymentModal({ purchase, onClose }: { purchase: Purchase; onClose: () => void }) {
   const rest = Math.max(0, purchaseTotal(purchase) - purchasePaid(purchase));
   const [amount, setAmount] = useState(rest ? String(Math.round(rest * 100) / 100) : '');
-  const [currency, setCurrency] = useState<'RMB' | 'MGA'>(purchase.currency);
+  const currency = purchase.currency;
   const [date, setDate] = useState(todayYmd());
-  const [method, setMethod] = useState('Alipay / agent');
+  const [method, setMethod] = useState(methodLabel('cash'));
   const [note, setNote] = useState('');
   const [account, setAccount] = useState<AccountId | ''>('');
   const [ar, setAr] = useState('');
@@ -288,14 +286,13 @@ function PaymentModal({ purchase, onClose }: { purchase: Purchase; onClose: () =
       }}>Enregistrer</Button></>}>
       <div className="stack">
         <div className="grid-2">
-          <TextField label="Montant" required value={amount} onChange={setAmount} inputMode="decimal" />
-          <SelectField label="Devise" value={currency} onChange={(v) => setCurrency(v as any)} options={[{ value: 'RMB', label: 'RMB (¥)' }, { value: 'MGA', label: `${shopCurrency().name} (${curSym()})` }]} />
+          <TextField label={`Montant (${currency === 'RMB' ? '¥' : curSym()})`} required value={amount} onChange={setAmount} inputMode="decimal" />
           <TextField label="Date" type="date" value={date} onChange={setDate} />
-          <SelectField label="Moyen" value={method} onChange={setMethod} options={['Alipay / agent', 'Virement bancaire', 'Espèces', 'MVola', 'Orange Money', 'Airtel Money', 'Autre'].map((m) => ({ value: m, label: m }))} />
+          <SelectField label="Moyen" value={method} onChange={setMethod} options={[...new Set([...activeMethods().map((m) => m.label), 'Virement bancaire', 'Chèque', 'Autre'])].map((m) => ({ value: m, label: m }))} />
         </div>
         <TextField label="Note (facultatif)" value={note} onChange={setNote} />
         <div className="grid-2">
-          <SelectField label="Sorti de la trésorerie" value={account} onChange={(v) => setAccount(v as AccountId | '')} options={[{ value: '', label: 'Non (payé hors caisse, ex. par un agent)' }, ...accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))]} />
+          <SelectField label="Sorti de la trésorerie" value={account} onChange={(v) => setAccount(v as AccountId | '')} options={[{ value: '', label: 'Non (payé hors caisse)' }, ...accountIds().map((a) => ({ value: a, label: ACCOUNTS[a] }))]} />
           {account && <TextField label={`Montant sorti en ${curSym()}`} value={ar} onChange={setAr} inputMode={moneyInputMode()} placeholder={String(arAuto)} hint={currency === 'RMB' ? `Au taux de la commande : ${fmtMoney(arAuto)}` : undefined} />}
         </div>
       </div>
@@ -310,11 +307,9 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
   const [newSupplier, setNewSupplier] = useState('');
   const [date, setDate] = useState(purchase?.date ?? todayYmd());
   const [orderRef, setOrderRef] = useState(purchase?.orderRef ?? '');
-  const [trackingNo, setTrackingNo] = useState(purchase?.trackingNo ?? '');
-  const [link, setLink] = useState(purchase?.link ?? '');
-  const [forwarder, setForwarder] = useState(purchase?.forwarder ?? '');
-  const [currency, setCurrency] = useState<'RMB' | 'MGA'>(purchase?.currency ?? 'RMB');
-  const [rate, setRate] = useState(String(purchase?.rate ?? lastRate('rmb') ?? ''));
+  // Anciennes commandes en RMB : gardées telles quelles ; les nouvelles sont dans la devise de la boutique.
+  const currency: 'RMB' | 'MGA' = purchase?.currency ?? 'MGA';
+  const rate = String(purchase?.rate ?? 1);
   const [chinaFees, setChinaFees] = useState(purchase?.chinaFees ? String(purchase.chinaFees) : '');
   const [discount, setDiscount] = useState(purchase?.discount ? String(purchase.discount) : '');
   const [notes, setNotes] = useState(purchase?.notes ?? '');
@@ -338,18 +333,18 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
         sup = s.id;
       }
       const data = {
-        supplierId: sup || undefined, date, orderRef: orderRef.trim() || undefined, trackingNo: trackingNo.trim() || undefined, link: link.trim() || undefined,
-        forwarder: forwarder.trim() || undefined, currency, rate: currency === 'RMB' ? parseNum(rate)! : 1, chinaFees: parseNum(chinaFees) || 0, discount: parseNum(discount) || 0,
+        supplierId: sup || undefined, date, orderRef: orderRef.trim() || undefined,
+        currency, rate: currency === 'RMB' ? parseNum(rate)! : 1, chinaFees: parseNum(chinaFees) || 0, discount: parseNum(discount) || 0,
         notes: notes.trim() || undefined, lines,
       };
       if (purchase) {
         await save('purchases', { id: purchase.id, ...data });
-        await audit('Commande Chine modifiée', purchase.number, 'purchases', purchase.id);
+        await audit('Achat modifié', purchase.number, 'purchases', purchase.id);
         toast('Commande enregistrée'); onClose();
       } else {
         const number = nextNumber('CMD', 'purchases');
         const [p] = await save('purchases', { ...data, number, status: 'ordered', statusDates: { ordered: date }, payments: [] });
-        await audit('Commande Chine créée', `${number} — ${purchaseQty(p as Purchase)} pièces`, 'purchases', p.id);
+        await audit('Achat créé', `${number} — ${purchaseQty(p as Purchase)} pièces`, 'purchases', p.id);
         toast(`Commande ${number} créée`); onClose(); onSaved?.(p as Purchase);
       }
     } catch (e: any) { setError(e.message); } finally { setBusy(false); }
@@ -360,24 +355,19 @@ export function PurchaseForm({ purchase, onClose, onSaved }: { purchase?: Purcha
   const setLine = (id: string, patch: Partial<PurchaseLine>) => setLines(lines.map((l) => (l.id === id ? { ...l, ...patch } : l)));
 
   return (
-    <Modal title={purchase ? `Modifier ${purchase.number}` : 'Nouvelle commande Chine'} onClose={onClose} wide
-      footer={<><span className="muted small" style={{ marginRight: 'auto' }}>{fmtNum(purchaseQty(draft))} pièces · {money(purchaseTotal(draft), currency)}{currency === 'RMB' && draft.rate ? ` ≈ ${fmtAr(purchaseTotalAr(draft))}` : ''}</span><Button variant="ghost" onClick={onClose}>Annuler</Button><Button busy={busy} onClick={submit}>{purchase ? 'Enregistrer' : 'Créer la commande'}</Button></>}>
+    <Modal title={purchase ? `Modifier ${purchase.number}` : 'Nouvel achat'} onClose={onClose} wide
+      footer={<><span className="muted small" style={{ marginRight: 'auto' }}>{fmtNum(purchaseQty(draft))} pièces · {money(purchaseTotal(draft), currency)}{currency === 'RMB' && draft.rate ? ` ≈ ${fmtAr(purchaseTotalAr(draft))}` : ''}</span><Button variant="ghost" onClick={onClose}>Annuler</Button><Button busy={busy} onClick={submit}>{purchase ? 'Enregistrer' : 'Enregistrer l’achat'}</Button></>}>
       <div className="stack">
         <div className="grid-2">
           <SelectField label="Fournisseur" value={supplierId} onChange={setSupplierId} options={[{ value: '', label: 'Non indiqué' }, ...suppliers.map((s) => ({ value: s.id, label: s.name })), { value: '__new', label: '+ Nouveau fournisseur…' }]} />
-          {supplierId === '__new' ? <TextField label="Nom du fournisseur" required value={newSupplier} onChange={setNewSupplier} placeholder="Ex. shop566869krq2495 (1688)" /> : <TextField label="Date de commande" type="date" value={date} onChange={setDate} />}
-          {supplierId === '__new' && <TextField label="Date de commande" type="date" value={date} onChange={setDate} />}
-          <TextField label="N° de commande 1688" value={orderRef} onChange={setOrderRef} inputMode="numeric" />
-          <TextField label="N° de suivi" value={trackingNo} onChange={setTrackingNo} />
-          <TextField label="Transitaire" value={forwarder} onChange={setForwarder} />
-          <TextField label="Lien de la commande" value={link} onChange={setLink} inputMode="url" autoCapitalize="none" />
+          {supplierId === '__new' ? <TextField label="Nom du fournisseur" required value={newSupplier} onChange={setNewSupplier} placeholder="Ex. Grossiste du marché" /> : <TextField label="Date d’achat" type="date" value={date} onChange={setDate} />}
+          {supplierId === '__new' && <TextField label="Date d’achat" type="date" value={date} onChange={setDate} />}
+          <TextField label="Référence du fournisseur (facultatif)" value={orderRef} onChange={setOrderRef} hint="N° de facture ou de bon de commande." />
         </div>
         <div className="card stack" style={{ background: 'var(--surface-2)' }}>
           <div className="grid-2">
-            <SelectField label="Devise des prix" value={currency} onChange={(v) => setCurrency(v as any)} options={[{ value: 'RMB', label: 'RMB (yuan ¥)' }, { value: 'MGA', label: `${shopCurrency().name} (${curSym()})` }]} />
-            {currency === 'RMB' && <TextField label={`Taux : 1 ¥ = … ${curSym()}`} required value={rate} onChange={setRate} inputMode="decimal" hint="Modifiable à tout moment." />}
-            <TextField label={`Frais de livraison en Chine (${currency === 'RMB' ? '¥' : curSym()})`} value={chinaFees} onChange={setChinaFees} inputMode="decimal" hint="Répartis sur chaque pièce." />
-            <TextField label={`Remise (${currency === 'RMB' ? '¥' : curSym()})`} value={discount} onChange={setDiscount} inputMode="decimal" />
+            <TextField label={`Frais : transport… (${currency === 'RMB' ? '¥' : curSym()}, facultatif)`} value={chinaFees} onChange={setChinaFees} inputMode="decimal" hint="Répartis sur chaque pièce dans le coût de revient." />
+            <TextField label={`Remise (${currency === 'RMB' ? '¥' : curSym()}, facultatif)`} value={discount} onChange={setDiscount} inputMode="decimal" />
           </div>
         </div>
 
@@ -476,7 +466,7 @@ function SuppliersPage() {
   const [edit, setEdit] = useState<Supplier | 'new' | null>(null);
   return (
     <>
-      <div className="row"><Button variant="quiet" icon="chevronRight" className="back-btn" onClick={() => navigate('/achats')}>Achats Chine</Button></div>
+      <div className="row"><Button variant="quiet" icon="chevronRight" className="back-btn" onClick={() => navigate('/achats')}>Achats</Button></div>
       <PageHead title="Fournisseurs" actions={can('purchases.manage') && <Button icon="plus" onClick={() => setEdit('new')}>Ajouter un fournisseur</Button>} />
       <div className="card card-flush">
         {suppliers.length === 0 ? <Empty icon="users" title="Aucun fournisseur" /> : (
@@ -518,8 +508,8 @@ function SupplierForm({ supplier, onClose }: { supplier?: Supplier; onClose: () 
       }}>Enregistrer</Button></>}>
       <div className="stack">
         <TextField label="Nom" required value={name} onChange={setName} autoFocus />
-        <TextField label="Boutique / lien 1688" value={shop} onChange={setShop} autoCapitalize="none" />
-        <TextField label="Contact (WeChat, téléphone)" value={contact} onChange={setContact} />
+        <TextField label="Contact (téléphone, e-mail)" value={contact} onChange={setContact} />
+        <TextField label="Adresse ou site web (facultatif)" value={shop} onChange={setShop} autoCapitalize="none" />
         <TextField label="Ville" value={city} onChange={setCity} />
         <TextField label="Notes" value={notes} onChange={setNotes} />
       </div>

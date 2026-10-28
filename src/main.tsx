@@ -13,7 +13,7 @@ import { App } from './App';
 import { licenseState } from './lib/license';
 import { ActivationScreen } from './pages/License';
 import { InstallScreen, wantsInstallPage } from './pages/Install';
-import { initialLang, patchDialogs, setLang } from './lib/i18n';
+import { initialLang, loadLang, patchDialogs, setLang } from './lib/i18n';
 import { applyPendingUpdate, startAutoUpdate, DOWNLOAD_PAGE } from './lib/liveUpdate';
 
 declare global {
@@ -21,8 +21,6 @@ declare global {
   const __BUILD_DATE__: string;
 }
 
-// Langue de l'interface (choisie sur cet appareil ; par défaut celle du téléphone ou de l'ordinateur).
-setLang(initialLang());
 patchDialogs();
 const root = createRoot(document.getElementById('root')!);
 import('./ui/scrollHint').then((m) => m.watchWideTables()).catch(() => {});
@@ -38,6 +36,9 @@ function guessDeviceName() {
 }
 
 async function boot() {
+  // Langue de l'interface choisie sur cet appareil (français par défaut) : dictionnaire chargé avant l'affichage.
+  const lang = initialLang();
+  setLang((await loadLang(lang)) ? lang : 'fr');
   try {
     // Application Android : passe sur la nouvelle version téléchargée la dernière fois (l'application se recharge).
     if (await applyPendingUpdate()) return;

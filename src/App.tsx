@@ -44,22 +44,23 @@ import { MyDeliveriesPage } from './pages/MyDeliveries';
 import { ExpensesPage } from './pages/Expenses';
 import { NotifBar, NotifBell, NotificationsPage, useNotifCount } from './ui/notifications';
 import { loc } from './lib/i18n';
+import { moduleOn, type ModuleKey } from './lib/modules';
 function NavNotifCount() { const n = useNotifCount(); return n ? <span className="nav-count">{n}</span> : null; }
 
-interface NavItem { path: string; label: string; short?: string; icon: IconName; perm?: string; group: string; page: () => ReactNode; mobile?: boolean }
+interface NavItem { path: string; label: string; short?: string; icon: IconName; perm?: string; group: string; page: () => ReactNode; mobile?: boolean; module?: ModuleKey }
 
 // Menu du plus important au moins important (proposition v4, point 9).
 const NAV: NavItem[] = [
   { path: '/', label: 'Accueil', icon: 'home', group: '', page: () => <DashboardPage />, mobile: true },
   { path: '/notifications', label: 'Notifications', icon: 'bell', group: '', page: () => <NotificationsPage /> },
   { path: '/vente', label: 'Vente sur place', icon: 'store', perm: 'pos.sell', group: 'Ventes', page: () => <PosPage />, mobile: true },
-  { path: '/commandes', label: 'Commandes clients', icon: 'list', perm: 'orders.create', group: 'Ventes', page: () => <OrdersPage />, mobile: true },
-  { path: '/mes-livraisons', label: 'Mes livraisons', icon: 'truck', perm: 'courier.self', group: 'Ventes', page: () => <MyDeliveriesPage />, mobile: true },
-  { path: '/livraisons', label: 'Livraisons et livreurs', short: 'Livraisons', icon: 'truck', perm: 'deliveries.menu', group: 'Ventes', page: () => <DeliveriesPage />, mobile: true },
+  { path: '/commandes', label: 'Commandes clients', icon: 'list', perm: 'orders.create', group: 'Ventes', page: () => <OrdersPage />, mobile: true, module: 'orders' },
+  { path: '/mes-livraisons', label: 'Mes livraisons', icon: 'truck', perm: 'courier.self', group: 'Ventes', page: () => <MyDeliveriesPage />, mobile: true, module: 'deliveries' },
+  { path: '/livraisons', label: 'Livraisons et livreurs', short: 'Livraisons', icon: 'truck', perm: 'deliveries.menu', group: 'Ventes', page: () => <DeliveriesPage />, mobile: true, module: 'deliveries' },
   { path: '/clients', label: 'Clients', icon: 'users', perm: 'orders.create', group: 'Ventes', page: () => <CustomersPage /> },
   { path: '/depenses', label: 'Dépenses', icon: 'wallet', perm: 'expenses.manage', group: 'Argent', page: () => <ExpensesPage /> },
   { path: '/caisse-du-jour', label: 'Caisse du jour', icon: 'wallet', perm: 'cashday.use', group: 'Argent', page: () => <DayCashPage /> },
-  { path: '/versements', label: 'Versements vendeurs', icon: 'wallet', perm: 'handover.receive|handover.self', group: 'Argent', page: () => <HandoversPage /> },
+  { path: '/versements', label: 'Versements vendeurs', icon: 'wallet', perm: 'handover.receive|handover.self', group: 'Argent', page: () => <HandoversPage />, module: 'handovers' },
   { path: '/recapitulatif', label: 'Récapitulatifs', icon: 'list', perm: 'treasury.view', group: 'Argent', page: () => <RecapPage /> },
   { path: '/tresorerie', label: 'Trésorerie', icon: 'wallet', perm: 'treasury.view', group: 'Argent', page: () => <TreasuryPage /> },
   { path: '/pages', label: 'Pages et variantes', icon: 'list', perm: 'catalog.view', group: 'Articles et stock', page: () => <CategoriesPage /> },
@@ -67,7 +68,7 @@ const NAV: NavItem[] = [
   { path: '/stock', label: 'Stock', icon: 'package', perm: 'catalog.view', group: 'Articles et stock', page: () => <StockPage /> },
   { path: '/achats', label: 'Achats et réceptions', icon: 'inbox', perm: 'purchases.manage|purchases.receive', group: 'Articles et stock', page: () => <PurchasingHub /> },
   { path: '/receptions', label: 'Réceptions', icon: 'download', perm: 'purchases.receive', group: 'hidden', page: () => <ReceptionsPage /> },
-  { path: '/boosts', label: 'Boosts pub', icon: 'megaphone', perm: 'boosts.view', group: 'Analyse', page: () => <BoostsPage /> },
+  { path: '/boosts', label: 'Boosts pub', icon: 'megaphone', perm: 'boosts.view', group: 'Analyse', page: () => <BoostsPage />, module: 'boosts' },
   { path: '/rapports', label: 'Rapports', icon: 'chart', perm: 'reports.view', group: 'Analyse', page: () => <ReportsPage /> },
   { path: '/utilisateurs', label: 'Utilisateurs', icon: 'users', perm: 'users.manage', group: 'Administration', page: () => <UsersPage /> },
   { path: '/roles', label: 'Rôles et accès', icon: 'shield', perm: 'users.manage', group: 'Administration', page: () => <RolesPage /> },
@@ -118,7 +119,7 @@ export function App() {
   }, [user?.id, company.autoLockMinutes, locked]);
 
   // Copies automatiques dans le cloud (quotidienne / hebdomadaire / mensuelle), vérifiées toutes les heures.
-  useEffect(() => { if (!user) return; const run = () => { void autoBackups(); void dailyRestorePoint(); void logMissedBoosts(); setTimeout(() => void autoOptimizePhotos(), 60_000); }; run(); const t = setInterval(run, 3600_000); return () => clearInterval(t); }, [user?.id]);
+  useEffect(() => { if (!user) return; const run = () => { void autoBackups(); void dailyRestorePoint(); if (moduleOn('boosts')) void logMissedBoosts(); setTimeout(() => void autoOptimizePhotos(), 60_000); }; run(); const t = setInterval(run, 3600_000); return () => clearInterval(t); }, [user?.id]);
   const resetGranted = useMeta<{ at: number } | null>('resetGranted', null);
 
   const [installPage, setInstallPage] = useState(wantsInstallPage);
@@ -161,7 +162,7 @@ function Shell() {
   const company = useCompany();
   const route = useRoute();
   const [open, setOpen] = useState(false);
-  const items = NAV.filter((n) => (!n.perm || n.perm.split('|').some((x) => can(x)) || (n.path === '/depenses' && can('treasury.view'))) && (n.path !== '/mes-livraisons' || !!user?.courierId));
+  const items = NAV.filter((n) => (!n.perm || n.perm.split('|').some((x) => can(x)) || (n.path === '/depenses' && can('treasury.view'))) && (n.path !== '/mes-livraisons' || !!user?.courierId) && (!n.module || moduleOn(n.module)));
   const current = [...items].sort((a, b) => b.path.length - a.path.length).find((n) => n.path === '/' ? route === '/' : route.startsWith(n.path)) ?? items[0];
   useEffect(() => { setOpen(false); restoreScroll(route); }, [route]);
   // Menu ouvert sur téléphone : la page derrière ne défile plus, seul le menu défile.

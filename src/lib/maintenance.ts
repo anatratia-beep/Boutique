@@ -144,7 +144,7 @@ export const DATA_GROUPS: { key: string; label: string; tables: TableName[]; nee
   { key: 'customers', label: 'Clients', tables: ['customers'], default: true },
   { key: 'money', label: 'Trésorerie : dépenses, revenus, virements, versements des livreurs, des vendeurs et au patron', tables: ['cashMoves', 'courierSettlements', 'closings', 'payouts', 'handovers'], default: true },
   { key: 'stock', label: 'Mouvements de stock (le stock de chaque article revient à 0)', tables: ['stockMoves'], default: true },
-  { key: 'purchases', label: 'Achats Chine et réceptions', tables: ['purchases', 'receptions'], default: true },
+  { key: 'purchases', label: 'Achats et réceptions', tables: ['purchases', 'receptions'], default: true },
   { key: 'print', label: 'Historique des impressions', tables: ['printJobs'], default: true },
   { key: 'inventories', label: 'Inventaires : fiches de comptage et historique', tables: ['inventories'], default: true },
   { key: 'boosts', label: 'Boosts publicitaires : boosts, résultats saisis et messages réels', tables: ['boosts', 'boostReadings', 'pageMessages'], default: true },

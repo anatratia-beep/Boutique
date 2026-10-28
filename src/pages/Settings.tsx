@@ -19,6 +19,7 @@ import { KEEP, deleteCloudBackup, pruneBackups } from '../lib/maintenance';
 import { ConflictsCard, DevicesCard } from './SyncCards';
 import { LicenseCard } from './License';
 import { LangPicker } from '../ui/langPicker';
+import { MODULES, moduleOn, setModule, type ModuleKey } from '../lib/modules';
 import { tr } from '../lib/i18n';
 import { applyPendingUpdate, checkForUpdate, isAndroidApp, DOWNLOAD_PAGE } from '../lib/liveUpdate';
 import { CLOUD_ENABLED } from '../lib/license';
@@ -28,9 +29,10 @@ import { loc } from '../lib/i18n';
 const TABS = [
   { key: 'societe', label: 'Société', perm: 'settings.company' },
   { key: 'paiements', label: 'Moyens de paiement', perm: 'settings.company' },
+  { key: 'fonctions', label: 'Fonctions', perm: 'settings.company' },
   { key: 'apparence', label: 'Apparence', perm: '' },
   { key: 'imprimantes', label: 'Imprimantes', perm: '' },
-  { key: 'zones', label: 'Zones de livraison', perm: 'couriers.view' },
+  { key: 'zones', label: 'Zones de livraison', perm: 'couriers.view', module: 'deliveries' as ModuleKey },
   ...(CLOUD_ENABLED ? [{ key: 'cloud', label: 'Cloud et synchronisation', perm: 'backup.manage' }] : []),
   { key: 'licence', label: 'Licence', perm: '' },
   { key: 'sauvegarde', label: 'Sauvegardes', perm: 'backup.manage' },
@@ -41,7 +43,8 @@ const TABS = [
 export function SettingsPage() {
   const can = useCan();
   const route = useRoute();
-  const tabs = TABS.filter((t) => !t.perm || can(t.perm));
+  useTable('settings');
+  const tabs = TABS.filter((t) => (!t.perm || can(t.perm)) && (!('module' in t) || !t.module || moduleOn(t.module)));
   const current = tabs.find((t) => route.endsWith('/' + t.key)) ?? tabs[0];
   return (
     <>
@@ -53,6 +56,7 @@ export function SettingsPage() {
       </div>
       {current.key === 'societe' && <CompanyTab />}
       {current.key === 'paiements' && <PayMethodsTab />}
+      {current.key === 'fonctions' && <ModulesTab />}
       {current.key === 'apparence' && <AppearanceTab />}
       {current.key === 'imprimantes' && <PrintersTab />}
       {current.key === 'zones' && <Zones />}
@@ -132,7 +136,7 @@ function CompanyTab() {
         <TextField label="Samedi à partir de" type="time" value={form.weekendFrom || '17:00'} onChange={(v) => setForm({ ...form, weekendFrom: v || undefined })}
           hint="Saisie le samedi à partir de cette heure, ou le dimanche : la date de commande devient le lundi." />
       </div>
-      <div className="card stack" style={{ background: 'var(--surface-2)' }}>
+      {moduleOn('boosts') && <div className="card stack" style={{ background: 'var(--surface-2)' }}>
         <div><h3>Compte boost : heure limite</h3><Help>Les boosts tournent tous les jours : le compte boost doit être fait chaque jour, dimanche compris, avant cette heure (le jour même). Après, le responsable reçoit une alerte et le gérant et le super-admin sont prévenus. Vide = heure de fermeture.</Help></div>
         {[1, 2, 3, 4, 5, 6, 0].map((d) => {
           const def = boostDeadlineTime({ ...form, boostDeadlines: {} } as any, d);
@@ -145,7 +149,7 @@ function CompanyTab() {
             </div>
           );
         })}
-      </div>
+      </div>}
       <div className="stack-s">
         <div className="grid-2">
           <SelectField label="Devise de la boutique" value={form.currency || 'MGA'} onChange={(v) => setForm({ ...form, currency: v, currencySymbol: '' })}
@@ -158,7 +162,7 @@ function CompanyTab() {
         <TextField label={`Objectif de chiffre d’affaires par jour (${curSym()})`} value={form.targetDay ? String(form.targetDay) : ''} onChange={(v) => setForm({ ...form, targetDay: parseMoney(v) || undefined })} inputMode={moneyInputMode()} hint="Facultatif : une barre de progression s’affiche sur l’accueil et dans le rapport du jour." />
         <TextField label={`Objectif de chiffre d’affaires par mois (${curSym()})`} value={form.targetMonth ? String(form.targetMonth) : ''} onChange={(v) => setForm({ ...form, targetMonth: parseMoney(v) || undefined })} inputMode={moneyInputMode()} hint="Facultatif : progression du mois, avec le rythme à tenir." />
       </div>
-      <TextField label={`Taux du dollar pour les boosts (${curSym()})`} value={String(form.usdRate ?? 4700)} onChange={(v) => setForm({ ...form, usdRate: parseNum(v) || 0 })} inputMode="decimal" hint="Sert à convertir la dépense des boosts ($) dans la devise de la boutique, dans le tableau de la semaine et le récapitulatif mensuel." />
+      {moduleOn('boosts') && <TextField label={`Taux du dollar pour les boosts (${curSym()})`} value={String(form.usdRate ?? 4700)} onChange={(v) => setForm({ ...form, usdRate: parseNum(v) || 0 })} inputMode="decimal" hint="Sert à convertir la dépense des boosts ($) dans la devise de la boutique, dans le tableau de la semaine et le récapitulatif mensuel." />}
       <SelectField label="Vente interne (employés) : prix de revient arrondi" value={String(form.internalRounding ?? 1)} onChange={(v) => setForm({ ...form, internalRounding: Number(v) || 1 })}
         options={[1, 50, 100, 500, 1000].map((n) => ({ value: String(n), label: n === 1 ? `à l’unité supérieure (ex. 2 562,5 → ${fmtMoney(2563)})` : `aux ${fmtMoney(n)} supérieurs (ex. 2 563 → ${fmtMoney(Math.ceil(2563 / n) * n)})` }))} />
       <div className="row">
@@ -247,6 +251,36 @@ function PayMethodsTab() {
         }}>Enregistrer</Button>
         {changed && <Button variant="quiet" onClick={() => setList(saved)}>Annuler les changements</Button>}
       </div>
+    </div>
+  );
+}
+
+/** Fonctions activables : chaque boutique garde seulement ce dont elle a besoin. */
+function ModulesTab() {
+  useTable('settings');
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <div className="card stack">
+      <div><h3>Fonctions du logiciel</h3><p className="muted small">La vente en boutique, le stock, les achats, les clients, les dépenses, la caisse et les rapports sont toujours là. Activez en plus seulement ce dont votre boutique a besoin : les menus apparaissent ou disparaissent aussitôt, sur tous les appareils. Rien n’est effacé quand vous désactivez une fonction.</p></div>
+      <ul className="list">
+        {MODULES.map((m) => {
+          const parentOff = !!m.needs && !moduleOn(m.needs);
+          const on = moduleOn(m.key);
+          return (
+            <li key={m.key} className="list-item" style={{ padding: '12px 0' }}>
+              <div className="list-item-main">
+                <strong>{m.label}</strong>
+                <p className="small muted">{m.description}{parentOff ? ` (nécessite « ${MODULES.find((x) => x.key === m.needs)!.label} »)` : ''}</p>
+              </div>
+              <label className="switch">
+                <input type="checkbox" role="switch" aria-label={m.label} checked={on} disabled={parentOff || busy === m.key}
+                  onChange={async (e) => { setBusy(m.key); try { await setModule(m.key, e.target.checked); await audit('Fonctions', `${m.label} : ${e.target.checked ? 'activée' : 'désactivée'}`); } finally { setBusy(null); } }} />
+                <span>{on ? 'Activée' : 'Désactivée'}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
