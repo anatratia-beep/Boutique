@@ -44,7 +44,8 @@ export function useEveningRecap() {
   useTable('audit');
   const hour = useHour();
   const sent = recapSent(today());
-  const allowed = can('cashday.use') && useModule('eveningRecap');
+  const recapOn = useModule('eveningRecap'); // hook toujours appelé (ordre des hooks)
+  const allowed = can('cashday.use') && recapOn;
   return { allowed, sent, due: allowed && !sent && hour >= EVENING_HOUR };
 }
 
